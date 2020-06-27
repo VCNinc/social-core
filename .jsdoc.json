@@ -1,0 +1,32 @@
+{
+	"opts": {
+		"template": "node_modules/docdash",
+        "encoding": "utf8",
+        "destination": "site/docs/",
+        "recurse": true,
+        "verbose": true
+	},
+	"docdash": {
+		"openGraph": {
+			"title": "Documentation | Social Core (msip-core) | Modular",
+			"type": "website",
+			"image": "../social-core.png",
+			"site-name": "Modular",
+			"url": "https://msip.core.modular.social/docs"
+		},
+		"meta": {
+			"title": "Documentation | Social Core (msip-core) | Modular",
+			"description": "Documentation for the modular social information platform core component of Modular."
+		},
+		"search": true,
+		"menu": {
+			"Project Website": {
+				"href": "https://msip.core.modular.social/"
+			},
+			"GitHub Repository": {
+				"href": "https://github.com/modular/social-core/"
+			}
+		},
+		"scripts": ["../docs.css", "../docs.js"]
+	}
+}
