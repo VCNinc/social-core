@@ -1,0 +1,61 @@
+{
+  "name": "@modular/msip-core",
+  "version": "0.0.0",
+  "description": "Modular Social Information Platform Core (msip-core)",
+  "main": "index.js",
+  "homepage": "https://msip.core.modular.social/",
+  "bugs": {
+    "url": "https://github.com/modular/social-core/issues",
+    "email": "modzero@protonmail.com"
+  },
+  "private": false,
+  "scripts": {
+    "test": "npm run validate",
+    "style": "eslint *.js",
+    "unit": "mocha -u tdd -s 0",
+    "docs": "jsdoc index.js -c .jsdoc.json",
+    "validate": "npm run style && npm run unit",
+    "version": "npm run docs && git add site && npm run build && git add msip-core.min.js",
+    "release": "np",
+    "postpublish": "npm run deploy",
+    "deploy": "gh-pages -d site",
+    "build": "terser --compress --comments false --module index.js --mangle -o msip-core.min.js"
+  },
+  "repository": "github:modular/social-core",
+  "author": "Modulo <modzero@protonmail.com> (https://github.com/modulo)",
+  "license": "MIT",
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "docdash": "^1.2.0",
+    "eslint": "^7.3.1",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "gh-pages": "^3.1.0",
+    "jsdoc": "^3.6.4",
+    "mocha": "^8.0.1",
+    "np": "^6.2.4",
+    "terser": "^4.8.0"
+  },
+  "keywords": [
+    "modular",
+    "networking",
+    "social",
+    "information",
+    "platform",
+    "core",
+    "backend",
+    "framework"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@modular/config": "^1.0.15",
+    "@modular/dmnc-core": "^1.0.0",
+    "@modular/smcc-core": "^1.1.0",
+    "@modular/standard": "^1.0.16"
+  }
+}
