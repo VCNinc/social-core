@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+		<title>Social Core (msip-core) | Modular</title>
+		<meta name="description" content="The modular social information platform core component of Modular.">
+		<link rel="icon" href="favicon.ico">
+		<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/atom-one-dark.min.css">
+		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+		<style>
+			body {
+				background-color: #eee;
+				box-sizing: border-box;
+				color: #5f5f5f;
+				font-size: 10px;
+				height: 100%;
+				font-family: Segoe UI,Helvetica Neue,Helvetica,Arial,sans-serif;
+				font-size: 1.6rem;
+				line-height: 1.5;
+				min-height: 100%;
+				overflow: auto;
+			}
+			header {
+				background-color: #fff;
+				box-shadow: 0 0 2.25rem #9da5ab;
+				padding: .8rem 0;
+				position: relative;
+				z-index: 2;
+			}
+			header .container {
+				position: relative;
+			}
+			header .btn {
+				position: absolute;
+				top: 50%;
+				right: 0;
+				transform: translateY(-50%);
+			}
+			.main {
+				background-color: #fff;
+				box-shadow: 0 4px 2.4rem -0.4rem #9da5ab;
+				margin-bottom: 3.2rem;
+				margin-top: 3.2rem;
+				overflow: hidden;
+				padding: 0;
+				position: relative;
+			}
+			.container {
+				padding: 0;
+			}
+			section {
+				padding: 1.6rem 2rem;
+			}
+			.code {
+				background-color: #282c34;
+				color: #ddd;
+				position: relative;
+			}
+			.hljs {
+				padding: 0;
+			}
+			pre {
+				margin-bottom: 0;
+			}
+			h2 {
+			    margin-bottom: 1.6rem;
+				color: #5f5f5f;
+			    font-weight: 400;
+			    letter-spacing: .5px;
+			    margin-top: 0rem;
+				font-size: 24px;
+			    margin-top: -1.6rem;
+			}
+			p {
+				font-size: 16px;
+			}
+			a {
+				border-bottom: 1px solid #d4d4d4;
+				color: #4b71ca;
+				padding-bottom: 3px;
+				text-decoration: none;
+			}
+			a:hover {
+				border-bottom-color: #a1a1a1;
+				text-decoration: none;
+				color: #284487;
+				cursor: pointer;
+			}
+
+			.io {
+				overflow: hidden;
+			}
+
+			@media(max-width: 991px) {
+				.io {
+					max-width: 460px;
+				}
+			}
+
+			@media(max-width: 767px) {
+				.io {
+					max-width: 320px;
+				}
+			}
+
+			@media(max-width: 575px) {
+				.io {
+					max-width: 90px;
+				}
+				code {
+					font-size: 18px;
+				}
+				header {
+					padding: 1.6rem 2rem;
+				    box-shadow: none;
+				}
+				.main {
+					margin: 0;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<header>
+			<div class="container">
+				<div class="io"><img src="msip-core.png" height="80"></div>
+				<a href="docs/index.html" class="btn btn-primary btn-lg">Documentation</a>
+			</div>
+		</header>
+		<div class="container main">
+			<section class="code">
+<pre><code class="js">(async () => {
+	let platform = await ModularPlatform.standard()
+	let user = await platform.register(...)
+	let post = await user.post(...)
+})()
+</code></pre>
+			</section>
+			<section>
+				<a class="github-button" href="https://github.com/modular" data-size="large" data-show-count="true" aria-label="Follow @modular on GitHub">Follow @modular</a>
+				<a class="github-button" href="https://github.com/sponsors/modular" data-icon="octicon-heart" data-size="large" aria-label="Sponsor @modular on GitHub">Sponsor</a>
+				<a class="github-button" href="https://github.com/modular/social-core/subscription" data-icon="octicon-eye" data-size="large" data-show-count="true" aria-label="Watch modular/social-core on GitHub">Watch</a>
+				<a class="github-button" href="https://github.com/modular/social-core" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star modular/social-core on GitHub">Star</a>
+				<a class="github-button" href="https://github.com/modular/social-core/fork" data-icon="octicon-repo-forked" data-size="large" data-show-count="true" aria-label="Fork modular/social-core on GitHub">Fork</a>
+				<a class="github-button" href="https://github.com/modular/social-core/issues" data-icon="octicon-issue-opened" data-size="large" data-show-count="true" aria-label="Issue modular/social-core on GitHub">Issue</a>
+				<a class="github-button" href="https://github.com/modular/social-core/archive/master.zip" data-icon="octicon-download" data-size="large" aria-label="Download modular/social-core on GitHub">Download</a>
+			</section>
+			<section>
+				<h2>What's Modular?</h2>
+				<p>Modular is a an open-source standard for decentralized social communication. It aims to solve the issues of censorship, deplatforming, intrusive adveritsing, poor user privacy that are prevalent on centralized social media platforms. Users on a Modular Network can communicate with eachother across the world without any centralized point of failure.</p>
+				<p><a href="https://modular.social"><i class="fa fa-link"></i> &nbsp;Modular Website</a></p>
+				<p><a href="https://github.com/modular"><i class="fa fa-github"></i> &nbsp;Modular GitHub</a></p>
+			</section>
+			<section>
+				<h2>What's the Modular Social Core?</h2>
+				<p>The Modular Social Information Platform Core (msip-core) package is a core component of Modular. It handles the social networking and communications algorithms that power the Modular information platform.</p>
+				<p><a href="https://github.com/modular/social-core"><i class="fa fa-github"></i> &nbsp;GitHub Repository</a></p>
+			</section>
+			<section>
+				<h2>Download</h2>
+				<p><a href="https://github.com/modular/social-core/releases"><i class="fa fa-download"></i> &nbsp;Latest Build</a></p>
+				<p><a href="https://cdn.jsdelivr.net/npm/@modular/msip-core"><i class="fa fa-link"></i> &nbsp;CDN Copy</a></p>
+				<p>This package is released inder the <a href="https://github.com/modular/social-core/blob/master/LICENSE">MIT license</a>.</p>
+			</section>
+			<section>
+				<h2>Installation</h2>
+				<p class="mb-0">In a browser:</p>
+			</section>
+			<section class="code">
+<pre><code class="html">&lt;script src="msip-core.min.js"&gt;&lt;/script&gt;
+</code></pre>
+			</section>
+			<section>
+				<p class="mb-0">Using npm:</p>
+			</section>
+			<section class="code">
+<pre><code>$ npm i --save @modular/msip-core
+</code></pre>
+			</section>
+			<section>
+				<p class="mb-0">In Node.js:</p>
+			</section>
+			<section class="code">
+<pre><code class="js">const { ModularPlatform, ModularUser, ModularPost, ModularMessage } = require('@modular/msip-core');
+</code></pre>
+			</section>
+			<section></section>
+			<section>
+				<h2>Further Reading</h2>
+				<p><a href="https://github.com/modular/social-core/blob/master/README.md">README.md</a></p>
+				<p><a href="https://github.com/modular/social-core/blob/master/CONTRIBUTING.md">CONTRIBUTING.md</a></p>
+				<p><a href="https://github.com/modular/social-core/blob/master/SECURITY.md">SECURITY.md</a></p>
+			</section>
+		</div>
+		<script async defer src="https://buttons.github.io/buttons.js"></script>
+		<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/highlight.min.js"></script>
+		<script>hljs.initHighlightingOnLoad();</script>
+	</body>
+</html>
