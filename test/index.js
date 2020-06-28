@@ -17,7 +17,7 @@ suite('index', () => {
   test('network', () => {
     return new Promise((resolve, reject) => {
       this.platform.network.handleRequest({layer: 'SOCIAL', type: 'AHOY'}).then((response) => {
-        response.should.equal('NO NO')
+        response.message.should.equal('NO NO')
         resolve()
       })
     })
