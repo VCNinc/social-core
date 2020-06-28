@@ -36,6 +36,11 @@ class ModularPlatform {
     this.db.posts = level(path.join(this.dbPath, 'posts'))
   }
 
+  useEndpoint (endpoint) {
+    this.network.useEndpoint(endpoint)
+    this.network.setCoverage('0%1')
+  }
+
   static async standard () {
     const config = await standard.config()
     return new ModularPlatform(config)
