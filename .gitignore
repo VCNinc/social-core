@@ -118,6 +118,7 @@ dist
 .pnp.*
 
 # db
+*.db
 modular
 modular/db
 modular/*
