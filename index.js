@@ -11,7 +11,7 @@
  */
 
 const { Network, NetworkStatus } = require('@modular/dmnc-core')
-const { ModularTrustRoot, ModularSource, ModularVerifier } = require('@modular/smcc-core')
+// const { ModularSource, ModularVerifier } = require('@modular/smcc-core')
 const { ModularConfiguration } = require('@modular/config')
 const standard = require('@modular/standard')
 const path = require('path')
@@ -37,14 +37,14 @@ class ModularPlatform {
   }
 
   static async standard () {
-    let config = await standard.config()
+    const config = await standard.config()
     return new ModularPlatform(config)
   }
 
   verifiedQuery (id, type, data) {
     return new Promise((resolve, reject) => {
-      let requests = [{layer: 'SOCIAL', type: type, payload: data}]
-      let peer = this.network.network.bestNodeCovering(id)
+      const requests = [{ layer: 'SOCIAL', type: type, payload: data }]
+      const peer = this.network.network.bestNodeCovering(id)
       this.network.peerQuery(peer.endpoint, requests).then((response) => {
         console.log(response)
       }).catch((error) => {
@@ -62,7 +62,7 @@ class ModularPlatform {
     switch (type) {
       case 'AHOY':
         if (network.status === NetworkStatus.READY) return Promise.resolve('AYE AYE')
-        else return Promise.reject('NO NO')
+        else return Promise.reject(new Error('NO NO'))
       case 'POST': return network.postHandler.bind(network.platform)(request.payload)
       default: throw new TypeError('SOCIAL handler cannot serve this request type')
     }
@@ -76,7 +76,10 @@ class ModularPlatform {
 }
 
 class ModularUser {
-  constructor (ModularPlatform) {}
+  constructor (platform) {
+    this.platform = platform
+  }
+
   static register (passphrase) {}
   static login (code, passphrase) {}
   static other (code) {}
@@ -90,7 +93,10 @@ class ModularUser {
 }
 
 class ModularPost {
-  constructor (author) {}
+  constructor (author) {
+    this.author = author
+  }
+
   setType (type) {}
   setTitle (title) {}
   setLink (link) {}
@@ -101,7 +107,11 @@ class ModularPost {
 }
 
 class ModularMessage {
-  constructor (sender, recipient) {}
+  constructor (sender, recipient) {
+    this.sender = sender
+    this.recipient = recipient
+  }
+
   setBody (body) {}
   send () {}
 }
