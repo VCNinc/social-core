@@ -15,10 +15,47 @@ const { ModularTrustRoot, ModularSource, ModularVerifier } = require('@modular/s
 const { ModularConfiguration } = require('@modular/config')
 const standard = require('@modular/standard')
 
-class ModularPlatform {}
-class ModularUser {}
-class ModularPost {}
-class ModularMessage {}
+class ModularPlatform {
+  constructor() {}
+  static async standard() {}
+  user() {}
+  async request() {}
+  async socialHandler() {}
+  async postHandler() {}
+}
+
+class ModularUser {
+  constructor(ModularPlatform) {}
+  static register(passphrase) {}
+  static login(code, passphrase) {}
+  static other(code) {}
+  updateProfile({}) {}
+  verifySocial(...) {}
+  delete() {}
+  follow(ModularUser) {}
+  unfollow(ModularUser) {}
+  block(ModularUser) {}
+  post() {}
+  message(ModularUser recipient) {}
+  static hidePost(pidToHide) {}
+}
+
+class ModularPost {
+  constructor(ModularUser author) {}
+  setType(type) {}
+  setTitle(title) {}
+  setLink(link) {}
+  setBody(body) {}
+  setParent(parent) {}
+  addModerator(moderator) {}
+  upload() {}
+}
+
+class ModularMessage {
+  constructor(ModularUser sender, ModularUser recipient) {}
+  setBody(body) {}
+  send() {}
+}
 
 /* Module Exports */
 module.exports.ModularPlatform = ModularPlatform
