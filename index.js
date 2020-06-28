@@ -14,14 +14,65 @@ const { Network, NetworkStatus } = require('@modular/dmnc-core')
 const { ModularTrustRoot, ModularSource, ModularVerifier } = require('@modular/smcc-core')
 const { ModularConfiguration } = require('@modular/config')
 const standard = require('@modular/standard')
+const path = require('path')
+const level = require('level')
 
 class ModularPlatform {
-  constructor () {}
-  static async standard () {}
-  user () {}
-  async request () {}
-  async socialHandler () {}
-  async postHandler () {}
+  constructor (config, options = {}) {
+    if (arguments.length !== 1 && arguments.length !== 2) throw new RangeError('ModularPlatform constructor expects one or two arguments')
+    if (!(config instanceof ModularConfiguration)) throw new TypeError('Config must be a valid ModularConfiguration object')
+    if (typeof options !== 'object') throw new TypeError('Options must be a valid options object')
+
+    this.config = ModularConfiguration.new(config)
+    this.dbPath = (options.dbPath === undefined) ? path.join(__dirname, this.config.networkIdentifier, 'db') : options.dbPath
+    this.debugLogger = (options.debugLogger === undefined) ? () => {} : options.debugLogger
+    this.network = new Network(config, options)
+    this.network.platform = this
+    this.network.registerHandler('SOCIAL', this.socialHandler)
+    this.initialize = this.network.initialize
+    this.onReady = this.network.onReady.bind(this.network)
+    this.db = {}
+    this.db.users = level(path.join(this.dbPath, 'users'))
+    this.db.posts = level(path.join(this.dbPath, 'posts'))
+  }
+
+  static async standard () {
+    let config = await standard.config()
+    return new ModularPlatform(config)
+  }
+
+  verifiedQuery (id, type, data) {
+    return new Promise((resolve, reject) => {
+      let requests = [{layer: 'SOCIAL', type: type, payload: data}]
+      let peer = this.network.network.bestNodeCovering(id)
+      this.network.peerQuery(peer.endpoint, requests).then((response) => {
+        console.log(response)
+      }).catch((error) => {
+        console.error(error)
+      })
+    })
+  }
+
+  async socialHandler (type, request, network) {
+    if (arguments.length !== 3) throw new RangeError('ModularPlatform.socialHandler() expects exactly three arguments')
+    if (typeof type !== 'string') throw new TypeError('First argument to ModularPlatform.socialHandler() must be an string')
+    if (typeof request !== 'object') throw new TypeError('Second argument to ModularPlatform.socialHandler() must be an object')
+    if (!(network instanceof Network)) throw new TypeError('Third argument to ModularPlatform.socialHandler() must be a Network')
+
+    switch (type) {
+      case 'AHOY':
+        if (network.status === NetworkStatus.READY) return Promise.resolve('AYE AYE')
+        else return Promise.reject('NO NO')
+      case 'POST': return network.postHandler.bind(network.platform)(request.payload)
+      default: throw new TypeError('SOCIAL handler cannot serve this request type')
+    }
+  }
+
+  async postHandler (request) {
+    if (arguments.length !== 1) throw new RangeError('ModularPlatform.postHandler() expects exactly one argument')
+    if (typeof request !== 'object') throw new TypeError('First argument to ModularPlatform.postHandler() must be an object')
+    return this.dbPath
+  }
 }
 
 class ModularUser {
@@ -35,8 +86,6 @@ class ModularUser {
   follow (user) {}
   unfollow (user) {}
   block (user) {}
-  post () {}
-  message (recipient) {}
   static hidePost (pidToHide) {}
 }
 
