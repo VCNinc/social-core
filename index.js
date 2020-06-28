@@ -16,45 +16,45 @@ const { ModularConfiguration } = require('@modular/config')
 const standard = require('@modular/standard')
 
 class ModularPlatform {
-  constructor() {}
-  static async standard() {}
-  user() {}
-  async request() {}
-  async socialHandler() {}
-  async postHandler() {}
+  constructor () {}
+  static async standard () {}
+  user () {}
+  async request () {}
+  async socialHandler () {}
+  async postHandler () {}
 }
 
 class ModularUser {
-  constructor(ModularPlatform) {}
-  static register(passphrase) {}
-  static login(code, passphrase) {}
-  static other(code) {}
-  updateProfile({}) {}
-  verifySocial(...) {}
-  delete() {}
-  follow(ModularUser) {}
-  unfollow(ModularUser) {}
-  block(ModularUser) {}
-  post() {}
-  message(ModularUser recipient) {}
-  static hidePost(pidToHide) {}
+  constructor (ModularPlatform) {}
+  static register (passphrase) {}
+  static login (code, passphrase) {}
+  static other (code) {}
+  updateProfile (fields) {}
+  verifySocial (platform, username) {}
+  delete () {}
+  follow (user) {}
+  unfollow (user) {}
+  block (user) {}
+  post () {}
+  message (recipient) {}
+  static hidePost (pidToHide) {}
 }
 
 class ModularPost {
-  constructor(ModularUser author) {}
-  setType(type) {}
-  setTitle(title) {}
-  setLink(link) {}
-  setBody(body) {}
-  setParent(parent) {}
-  addModerator(moderator) {}
-  upload() {}
+  constructor (author) {}
+  setType (type) {}
+  setTitle (title) {}
+  setLink (link) {}
+  setBody (body) {}
+  setParent (parent) {}
+  addModerator (moderator) {}
+  upload () {}
 }
 
 class ModularMessage {
-  constructor(ModularUser sender, ModularUser recipient) {}
-  setBody(body) {}
-  send() {}
+  constructor (sender, recipient) {}
+  setBody (body) {}
+  send () {}
 }
 
 /* Module Exports */
