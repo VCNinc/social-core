@@ -33,7 +33,6 @@ suite('index', () => {
               {"layer": "SOCIAL", "type": "POST"}
           ]
       }).then((response) => {
-        console.log(response)
         resolve()
       })
     })
