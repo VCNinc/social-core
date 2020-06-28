@@ -119,4 +119,4 @@ dist
 
 # db
 modular/db
-modular
+modular/*
