@@ -34,7 +34,7 @@ class ModularPlatform {
     this.db.posts = level(path.join(this.dbPath, 'posts'))
   }
 
-  onReady(callback) {
+  onReady (callback) {
     this.network.onReady(callback)
   }
 
