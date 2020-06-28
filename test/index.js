@@ -16,23 +16,21 @@ suite('index', () => {
 
   test('network', () => {
     return new Promise((resolve, reject) => {
-      this.platform.network.handleRequest({layer: 'SOCIAL', type: 'AHOY'}).then((response) => {
-        response.message.should.equal('NO NO')
-        resolve()
-      })
-    })
-  })
-
-  test('working', () => {
-    return new Promise((resolve, reject) => {
       this.platform.network.handleQuery({
           "network": "modular",
           "requests": [
               {"layer": "NET", "type": "PING"},
-              {"layer": "SOCIAL", "type": "AHOY"},
-              {"layer": "SOCIAL", "type": "POST"}
+              {"layer": "SOCIAL", "type": "AHOY"}
           ]
       }).then((response) => {
+        response.should.deep.equal({
+          network: 'modular',
+          version: 1,
+          results: [
+            { status: 'OK', response: 'PONG' },
+            { status: 'ERROR', message: 'NO NO' }
+          ]
+        })
         resolve()
       })
     })
