@@ -22,4 +22,20 @@ suite('index', () => {
       })
     })
   })
+
+  test('working', () => {
+    return new Promise((resolve, reject) => {
+      this.platform.network.handleQuery({
+          "network": "modular",
+          "requests": [
+              {"layer": "NET", "type": "PING"},
+              {"layer": "SOCIAL", "type": "AHOY"},
+              {"layer": "SOCIAL", "type": "POST"}
+          ]
+      }).then((response) => {
+        console.log(response)
+        resolve()
+      })
+    })
+  })
 })

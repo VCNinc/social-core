@@ -64,25 +64,32 @@ class ModularPlatform {
     })
   }
 
-  async socialHandler (type, request, network) {
+  socialHandler (type, request, network) {
     if (arguments.length !== 3) throw new RangeError('ModularPlatform.socialHandler() expects exactly three arguments')
     if (typeof type !== 'string') throw new TypeError('First argument to ModularPlatform.socialHandler() must be an string')
     if (typeof request !== 'object') throw new TypeError('Second argument to ModularPlatform.socialHandler() must be an object')
     if (!(network instanceof Network)) throw new TypeError('Third argument to ModularPlatform.socialHandler() must be a Network')
 
     switch (type) {
-      case 'AHOY':
-        if (network.status === NetworkStatus.READY) return Promise.resolve('AYE AYE')
-        else return Promise.reject(new Error('NO NO'))
-      case 'POST': return network.postHandler.bind(network.platform)(request.payload)
+      case 'AHOY': return network.platform.ahoyHandler.bind(network.platform)(request.payload)
+      case 'POST': return network.platform.postHandler.bind(network.platform)(request.payload)
       default: throw new TypeError('SOCIAL handler cannot serve this request type')
     }
   }
 
-  async postHandler (request) {
-    if (arguments.length !== 1) throw new RangeError('ModularPlatform.postHandler() expects exactly one argument')
-    if (typeof request !== 'object') throw new TypeError('First argument to ModularPlatform.postHandler() must be an object')
-    return this.dbPath
+  ahoyHandler (request) {
+    return new Promise((resolve, reject) => {
+      if (this.network.status === NetworkStatus.READY) resolve('AYE AYE')
+      else reject(new Error('NO NO'))
+    })
+  }
+
+  postHandler (request) {
+    return new Promise((resolve, reject) => {
+      resolve({
+        dbPath: this.dbPath
+      })
+    })
   }
 }
 
