@@ -29,11 +29,17 @@ class ModularPlatform {
     this.network = new Network(config, options)
     this.network.platform = this
     this.network.registerHandler('SOCIAL', this.socialHandler)
-    this.initialize = this.network.initialize
-    this.onReady = this.network.onReady.bind(this.network)
     this.db = {}
     this.db.users = level(path.join(this.dbPath, 'users'))
     this.db.posts = level(path.join(this.dbPath, 'posts'))
+  }
+
+  onReady(callback) {
+    this.network.onReady(callback)
+  }
+
+  initialize () {
+    this.network.initialize()
   }
 
   useEndpoint (endpoint) {
