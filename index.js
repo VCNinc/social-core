@@ -10,11 +10,12 @@
  * @author Modulo (https://github.com/modulo) <modzero@protonmail.com>
  */
 
+/* global BigInt */
 const { Network, NetworkStatus } = require('@modular/dmnc-core')
-const { ModularSource, ModularVerifier } = require('@modular/smcc-core')
+const { ModularSource } = require('@modular/smcc-core')
+// ModularVerifier
 const { ModularConfiguration } = require('@modular/config')
 const standard = require('@modular/standard')
-const path = require('path')
 const level = require('level')
 
 class ModularPlatform {
@@ -53,9 +54,8 @@ class ModularPlatform {
   }
 
   verifiedQuery (id, type, data) {
-
-    let big = BigInt('0x' + id)
-    let mod = big % this.bigM
+    const big = BigInt('0x' + id)
+    const mod = big % this.bigM
 
     return new Promise((resolve, reject) => {
       const requests = [{ layer: 'SOCIAL', type: type, payload: data }]
@@ -97,8 +97,8 @@ class ModularPlatform {
   }
 
   async registerUser (newProfile, passphrase) {
-    let user = new ModularUser(this)
-    let packet = await ModularSource.userRegistration(newProfile, passphrase)
+    const user = new ModularUser(this)
+    const packet = await ModularSource.userRegistration(newProfile, passphrase)
     user.type = 'ME'
     this.db.users.put('ME', user.id)
     user.source = packet.source
@@ -115,14 +115,14 @@ class ModularUser {
     this.platform = platform
   }
 
-  toString() {
+  toString () {
     return JSON.stringify({
       id: this.id,
       key: this.key
     })
   }
 
-  save() {
+  save () {
     this.platform.db.users.put(this.id, this.toString())
   }
 
