@@ -11,7 +11,7 @@
  */
 
 const { Network, NetworkStatus } = require('@modular/dmnc-core')
-// const { ModularSource, ModularVerifier } = require('@modular/smcc-core')
+const { ModularSource, ModularVerifier } = require('@modular/smcc-core')
 const { ModularConfiguration } = require('@modular/config')
 const standard = require('@modular/standard')
 const path = require('path')
@@ -24,14 +24,14 @@ class ModularPlatform {
     if (typeof options !== 'object') throw new TypeError('Options must be a valid options object')
 
     this.config = ModularConfiguration.new(config)
-    this.dbPath = (options.dbPath === undefined) ? path.join(__dirname, this.config.networkIdentifier, 'db') : options.dbPath
-    this.debugLogger = (options.debugLogger === undefined) ? () => {} : options.debugLogger
     this.network = new Network(config, options)
     this.network.platform = this
+    this.debugLogger = this.network.debugLogger
     this.network.registerHandler('SOCIAL', this.socialHandler)
     this.db = {}
-    this.db.users = level(path.join(this.dbPath, 'users'))
-    this.db.posts = level(path.join(this.dbPath, 'posts'))
+    this.db.users = level('users')
+    this.db.posts = level('posts')
+    this.bigM = BigInt(this.network.network.M)
   }
 
   onReady (callback) {
@@ -53,9 +53,13 @@ class ModularPlatform {
   }
 
   verifiedQuery (id, type, data) {
+
+    let big = BigInt('0x' + id)
+    let mod = big % this.bigM
+
     return new Promise((resolve, reject) => {
       const requests = [{ layer: 'SOCIAL', type: type, payload: data }]
-      const peer = this.network.network.bestNodeCovering(id)
+      const peer = this.network.network.bestNodeCovering(Number(mod))
       this.network.peerQuery(peer.endpoint, requests).then((response) => {
         console.log(response)
       }).catch((error) => {
@@ -91,6 +95,19 @@ class ModularPlatform {
       })
     })
   }
+
+  async registerUser (newProfile, passphrase) {
+    let user = new ModularUser(this)
+    let packet = await ModularSource.userRegistration(newProfile, passphrase)
+    user.type = 'ME'
+    this.db.users.put('ME', user.id)
+    user.source = packet.source
+    user.id = packet.source.id
+    user.key = packet.privateKeyArmored
+    user.save()
+    this.verifiedQuery(user.id, 'REGISTER', packet.request)
+    return user
+  }
 }
 
 class ModularUser {
@@ -98,9 +115,19 @@ class ModularUser {
     this.platform = platform
   }
 
-  static register (passphrase) {}
-  static login (code, passphrase) {}
-  static other (code) {}
+  toString() {
+    return JSON.stringify({
+      id: this.id,
+      key: this.key
+    })
+  }
+
+  save() {
+    this.platform.db.users.put(this.id, this.toString())
+  }
+
+  static login (uid, passphrase) {}
+  static other (uid) {}
   updateProfile (fields) {}
   verifySocial (platform, username) {}
   delete () {}

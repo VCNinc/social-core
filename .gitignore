@@ -122,3 +122,5 @@ dist
 modular
 modular/db
 modular/*
+posts
+users

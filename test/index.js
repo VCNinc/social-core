@@ -35,4 +35,11 @@ suite('index', () => {
       })
     })
   })
+
+  test('register', async () => {
+    const newProfile = []
+    newProfile['name'] = "Modulo"
+    newProfile['email'] = "modzero@protonmail.com"
+    let user = await this.platform.registerUser(newProfile, 'Tr0ub4dour&3')
+  })
 })
