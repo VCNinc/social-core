@@ -124,7 +124,7 @@ class ModularPlatform {
       newProfile[key] = value
     })
 
-    if (!(await verifier.verifyProfileUpdate(payload.profileUpdate.signature, payload.profileUpdate.timestamp, newProfile))) { throw new Error('Could not verify profile.') }
+    if (!(await verifier.verifyUserProfileUpdate(payload.profileUpdate.signature, payload.profileUpdate.timestamp, newProfile))) { throw new Error('Could not verify profile.') }
 
     const user = new ModularUser(this)
     user.key = payload.key
