@@ -193,25 +193,25 @@ class ModularUser {
 
   follow (user) {}
 
-  /** @todo */
+  /** @todo implementation */
   updateProfile (fields) {}
 
-  /** @todo */
+  /** @todo implementation */
   verifySocial (platform, username) {}
 
-  /** @todo */
+  /** @todo implementation */
   unfollow (user) {}
 
-  /** @todo */
+  /** @todo implementation */
   delete () {}
 
-  /** @todo */
+  /** @todo implementation */
   block (user) {}
 
-  /** @todo */
+  /** @todo implementation */
   unblock (user) {}
 
-  /** @todo */
+  /** @todo implementation */
   static hidePost (pidToHide) {}
 }
 
@@ -229,7 +229,7 @@ class ModularPost {
   upload () {}
 }
 
-/** @todo */
+/** @todo implementation */
 class ModularMessage {
   constructor (sender, recipient) {
     this.sender = sender
