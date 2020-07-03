@@ -1,6 +1,6 @@
 {
   "name": "@modular/msip-core",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Modular Social Information Platform Core (msip-core)",
   "main": "index.js",
   "homepage": "https://msip.core.modular.social/",
