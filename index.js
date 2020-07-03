@@ -12,8 +12,7 @@
 
 /* global BigInt */
 const { Network, NetworkStatus } = require('@modular/dmnc-core')
-const { ModularSource } = require('@modular/smcc-core')
-// ModularVerifier
+const { ModularSource, ModularVerifier } = require('@modular/smcc-core')
 const { ModularConfiguration } = require('@modular/config')
 const standard = require('@modular/standard')
 const level = require('level')
@@ -61,9 +60,9 @@ class ModularPlatform {
       const requests = [{ layer: 'SOCIAL', type: type, payload: data }]
       const peer = this.network.network.bestNodeCovering(Number(mod))
       this.network.peerQuery(peer.endpoint, requests).then((response) => {
-        console.log(response)
+        resolve(response.results[0].result)
       }).catch((error) => {
-        console.error(error)
+        reject(error)
       })
     })
   }
@@ -77,21 +76,67 @@ class ModularPlatform {
     switch (type) {
       case 'AHOY': return network.platform.ahoyHandler.bind(network.platform)(request.payload)
       case 'POST': return network.platform.postHandler.bind(network.platform)(request.payload)
+      case 'REGISTER': return network.platform.registerHandler.bind(network.platform)(request.payload)
+      case 'USER': return network.platform.fetchUser.bind(network.platform)(request.payload)
       default: throw new TypeError('SOCIAL handler cannot serve this request type')
     }
   }
 
-  ahoyHandler (request) {
+  ahoyHandler (payload) {
     return new Promise((resolve, reject) => {
       if (this.network.status === NetworkStatus.READY) resolve('AYE AYE')
       else reject(new Error('NO NO'))
     })
   }
 
-  postHandler (request) {
+  postHandler (payload) {
     return new Promise((resolve, reject) => {
       resolve({
         dbPath: this.dbPath
+      })
+    })
+  }
+
+  static validateTimestamp (timestamp) {
+    if (!Number.isInteger(timestamp)) throw new TypeError('Timestamp must be an integer')
+    if (!(timestamp <= Date.now())) throw new RangeError('Timestamp must be in the past')
+    if (!(timestamp >= (Date.now() - 5000))) throw new RangeError('Timestamp must be recent')
+  }
+
+  async registerHandler (payload) {
+    if (typeof payload.key !== 'string') throw new TypeError('Incomplete request payload.')
+    if (typeof payload.profileUpdate.user !== 'string') throw new TypeError('Incomplete request payload.')
+    if (payload.profileUpdate.type !== 'PROFILE') throw new TypeError('Incomplete request payload.')
+    if (typeof payload.profileUpdate.body !== 'string') throw new TypeError('Incomplete request payload.')
+    if (typeof payload.profileUpdate.signature !== 'string') throw new TypeError('Incomplete request payload.')
+    if (!Array.isArray(payload.profile)) throw new TypeError('Incomplete request payload.')
+
+    if (await ModularUser.exists(payload.profileUpdate.user)) throw new Error('Already registered.')
+    ModularPlatform.validateTimestamp(payload.profileUpdate.timestamp)
+
+    const verifier = await ModularVerifier.loadUser(payload.key)
+
+    if (verifier.id !== payload.profileUpdate.user) throw new Error('UID does not match key.')
+
+    if (!(await verifier.verifyProfileUpdate(payload.profileUpdate.signature, payload.profileUpdate.timestamp, payload.profile))) { throw new Error('Could not verify profile.') }
+
+    const user = new ModularUser(this)
+    user.key = payload.key
+    user.id = verifier.id
+    user.profile = payload.profile
+    await user.save()
+
+    return 'Saved user.'
+
+    // propagate
+  }
+
+  fetchUser (payload) {
+    return new Promise((resolve, reject) => {
+      if (typeof payload.id !== 'string') throw new TypeError('User id must be a string')
+      this.platform.db.users.get(payload.id, (err, value) => {
+        if (err) reject(new Error('User does not exist.'))
+        resolve(JSON.parse(value))
       })
     })
   }
@@ -100,11 +145,13 @@ class ModularPlatform {
     const user = new ModularUser(this)
     const packet = await ModularSource.userRegistration(newProfile, passphrase)
     user.type = 'ME'
-    this.db.users.put('ME', user.id)
     user.source = packet.source
     user.id = packet.source.id
     user.key = packet.privateKeyArmored
+    user.profile = newProfile
     user.save()
+    this.db.users.put('ME', user.id)
+    packet.request.profile = newProfile
     this.verifiedQuery(user.id, 'REGISTER', packet.request)
     return user
   }
@@ -115,25 +162,56 @@ class ModularUser {
     this.platform = platform
   }
 
+  static async exists (uid) {
+    this.platform.db.users.get(uid, (err, value) => {
+      if (err) {
+        return false
+      }
+      return true
+    })
+  }
+
   toString () {
     return JSON.stringify({
       id: this.id,
-      key: this.key
+      key: this.key,
+      profile: this.profile
     })
   }
 
   save () {
-    this.platform.db.users.put(this.id, this.toString())
+    return new Promise((resolve, reject) => {
+      this.platform.db.users.put(this.id, this.toString(), (err) => {
+        if (err) reject(err)
+        else resolve()
+      })
+    })
   }
 
   static login (uid, passphrase) {}
   static other (uid) {}
-  updateProfile (fields) {}
-  verifySocial (platform, username) {}
-  delete () {}
+
   follow (user) {}
+
+  /** @todo */
+  updateProfile (fields) {}
+
+  /** @todo */
+  verifySocial (platform, username) {}
+
+  /** @todo */
   unfollow (user) {}
+
+  /** @todo */
+  delete () {}
+
+  /** @todo */
   block (user) {}
+
+  /** @todo */
+  unblock (user) {}
+
+  /** @todo */
   static hidePost (pidToHide) {}
 }
 
@@ -151,13 +229,14 @@ class ModularPost {
   upload () {}
 }
 
+/** @todo */
 class ModularMessage {
   constructor (sender, recipient) {
     this.sender = sender
     this.recipient = recipient
   }
 
-  setBody (body) {}
+  setBody (body) { this.body = body }
   send () {}
 }
 

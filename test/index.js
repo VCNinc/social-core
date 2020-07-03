@@ -5,11 +5,11 @@ suite('index', () => {
   suiteSetup(() => {
     return new Promise((resolve, reject) => {
       ModularPlatform.standard().then((platform) => {
-        this.platform = platform;
-        resolve()
+        this.platform = platform
         platform.onReady(() => {
-          console.log('ready')
+          resolve()
         })
+        platform.initialize()
       })
     })
   })
@@ -28,7 +28,7 @@ suite('index', () => {
           version: 1,
           results: [
             { status: 'OK', response: 'PONG' },
-            { status: 'ERROR', message: 'NO NO' }
+            { status: 'OK', response: 'AYE AYE' }
           ]
         })
         resolve()
