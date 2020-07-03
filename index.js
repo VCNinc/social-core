@@ -104,12 +104,12 @@ class ModularPlatform {
   }
 
   async registerHandler (payload) {
-    if (typeof payload.key !== 'string') throw new TypeError('Incomplete request payload.')
-    if (typeof payload.profileUpdate.user !== 'string') throw new TypeError('Incomplete request payload.')
-    if (payload.profileUpdate.type !== 'PROFILE') throw new TypeError('Incomplete request payload.')
-    if (typeof payload.profileUpdate.body !== 'string') throw new TypeError('Incomplete request payload.')
-    if (typeof payload.profileUpdate.signature !== 'string') throw new TypeError('Incomplete request payload.')
-    if (!Array.isArray(payload.profile)) throw new TypeError('Incomplete request payload.')
+    if (typeof payload.key !== 'string') throw new TypeError('Incomplete request payload (key).')
+    if (typeof payload.profileUpdate.user !== 'string') throw new TypeError('Incomplete request payload (user).')
+    if (payload.profileUpdate.type !== 'PROFILE') throw new TypeError('Incomplete request payload (type).')
+    if (typeof payload.profileUpdate.body !== 'string') throw new TypeError('Incomplete request payload (body).')
+    if (typeof payload.profileUpdate.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
+    if (typeof payload.profile !== 'object') throw new TypeError('Incomplete request payload (profile).')
 
     if (await ModularUser.exists(payload.profileUpdate.user)) throw new Error('Already registered.')
     ModularPlatform.validateTimestamp(payload.profileUpdate.timestamp)
