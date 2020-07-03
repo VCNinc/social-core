@@ -138,7 +138,7 @@ class ModularPlatform {
   fetchUser (payload) {
     return new Promise((resolve, reject) => {
       if (typeof payload.id !== 'string') throw new TypeError('User id must be a string')
-      this.platform.db.users.get(payload.id, (err, value) => {
+      this.db.users.get(payload.id, (err, value) => {
         if (err) reject(new Error('User does not exist.'))
         resolve(JSON.parse(value))
       })
