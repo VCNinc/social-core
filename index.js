@@ -118,17 +118,21 @@ class ModularPlatform {
 
     if (verifier.id !== payload.profileUpdate.user) throw new Error('UID does not match key.')
 
-    if (!(await verifier.verifyProfileUpdate(payload.profileUpdate.signature, payload.profileUpdate.timestamp, payload.profile))) { throw new Error('Could not verify profile.') }
+    const newProfile = []
+    Object.entries(payload.profile).forEach(entry => {
+      const [key, value] = entry
+      newProfile[key] = value
+    })
+
+    if (!(await verifier.verifyProfileUpdate(payload.profileUpdate.signature, payload.profileUpdate.timestamp, newProfile))) { throw new Error('Could not verify profile.') }
 
     const user = new ModularUser(this)
     user.key = payload.key
     user.id = verifier.id
-    user.profile = payload.profile
+    user.profile = newProfile
     await user.save()
 
     return 'Saved user.'
-
-    // propagate
   }
 
   fetchUser (payload) {
@@ -151,7 +155,8 @@ class ModularPlatform {
     user.profile = newProfile
     user.save()
     this.db.users.put('ME', user.id)
-    packet.request.profile = newProfile
+    packet.request.profile = Object.assign({}, newProfile)
+    console.log(JSON.stringify(packet.request))
     this.verifiedQuery(user.id, 'REGISTER', packet.request)
     return user
   }
