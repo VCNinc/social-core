@@ -111,7 +111,7 @@ class ModularPlatform {
     if (typeof payload.profileUpdate.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
     if (typeof payload.profile !== 'object') throw new TypeError('Incomplete request payload (profile).')
 
-    if (await ModularUser.exists(payload.profileUpdate.user)) throw new Error('Already registered.')
+    if (await ModularUser.exists.bind(this)(payload.profileUpdate.user)) throw new Error('Already registered.')
     ModularPlatform.validateTimestamp(payload.profileUpdate.timestamp)
 
     const verifier = await ModularVerifier.loadUser(payload.key)
@@ -168,7 +168,7 @@ class ModularUser {
   }
 
   static async exists (uid) {
-    this.platform.db.users.get(uid, (err, value) => {
+    this.db.users.get(uid, (err, value) => {
       if (err) {
         return false
       }
