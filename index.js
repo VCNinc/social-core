@@ -100,7 +100,7 @@ class ModularPlatform {
   static validateTimestamp (timestamp) {
     if (!Number.isInteger(timestamp)) throw new TypeError('Timestamp must be an integer')
     if (!(timestamp <= Date.now())) throw new RangeError('Timestamp must be in the past')
-    if (!(timestamp >= (Date.now() - 5000))) throw new RangeError('Timestamp must be recent')
+    if (!(timestamp >= (Date.now() - 60000))) throw new RangeError('Timestamp must be recent')
   }
 
   async registerHandler (payload) {
