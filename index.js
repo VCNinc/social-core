@@ -188,7 +188,7 @@ class ModularPlatform {
 
       this.db.users.get(payload.id, (err, value) => {
         if (err) reject(new Error('User does not exist.'))
-        resolve(JSON.parse(value))
+        else resolve(JSON.parse(value))
       })
     })
   }
@@ -205,7 +205,7 @@ class ModularPlatform {
     this.db.users.put('ME', user.id)
     packet.request.profile = Object.assign({}, newProfile)
     console.log(JSON.stringify(packet.request))
-    // await this.startPropagation(user.id, 'REGISTER', packet.request)
+    await this.startPropagation(user.id, 'REGISTER', packet.request)
     return user
   }
 }
