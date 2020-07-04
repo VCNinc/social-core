@@ -184,7 +184,7 @@ class ModularPlatform {
       const big = BigInt('0x' + payload.id)
       const mod = big % this.bigM
 
-      if (mod !== request.mod) throw new Error('User id does not match mod')
+      if (Number(mod) !== request.mod) throw new Error('User id does not match mod')
 
       this.db.users.get(payload.id, (err, value) => {
         if (err) reject(new Error('User does not exist.'))
