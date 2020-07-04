@@ -44,7 +44,10 @@ class ModularPlatform {
 
   useEndpoint (endpoint) {
     this.network.useEndpoint(endpoint)
-    this.network.setCoverage('0%1')
+  }
+
+  setCoverage (coverage) {
+    this.network.setCoverage(coverage)
   }
 
   static async standard () {
@@ -202,7 +205,7 @@ class ModularPlatform {
     this.db.users.put('ME', user.id)
     packet.request.profile = Object.assign({}, newProfile)
     console.log(JSON.stringify(packet.request))
-    this.startPropagation(user.id, 'REGISTER', packet.request)
+    // await this.startPropagation(user.id, 'REGISTER', packet.request)
     return user
   }
 }

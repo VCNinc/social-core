@@ -9,7 +9,7 @@ suite('index', () => {
         platform.onReady(() => {
           resolve()
         })
-        platform.useEndpoint('https://example.com')
+        platform.setCoverage('0%1')
         platform.initialize()
       })
     })
