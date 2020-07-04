@@ -12,7 +12,7 @@
   "scripts": {
     "test": "npm run validate",
     "style": "eslint *.js",
-    "unit": "mocha -u tdd -s 0",
+    "unit": "mocha -u tdd -s 0 --timeout 5000",
     "docs": "jsdoc index.js -c .jsdoc.json",
     "validate": "npm run style && npm run unit",
     "version": "npm run docs && git add site && npm run build && git add msip-core.min.js",
