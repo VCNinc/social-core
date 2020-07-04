@@ -52,48 +52,78 @@ class ModularPlatform {
     return new ModularPlatform(config)
   }
 
-  verifiedQuery (id, type, data) {
+  propagate (request) {
+    if (!Array.isArray(request.reach)) throw new TypeError('Request.reach must be an array')
+
+    const mod = request.mod
+    const oldReach = new Set(request.reach)
+    const newReach = this.network.network.nodesCovering(mod)
+      .map(node => node.endpoint)
+      .filter(node => !oldReach.has(node))
+    const fullReach = newReach.concat(request.reach)
+    request.reach = fullReach
+
+    const promises = []
+    newReach.forEach((node) => {
+      const promise = this.network.peerQuery(node, [request])
+      promises.push(promise)
+    })
+
+    return Promise.allSettled(promises)
+  }
+
+  startPropagation (id, type, payload) {
     const big = BigInt('0x' + id)
     const mod = big % this.bigM
+    return this.propagate({
+      layer: 'SOCIAL',
+      type: type,
+      payload: payload,
+      mod: Number(mod),
+      reach: [],
+      propagate: true
+    })
+  }
 
+  socialHandler (type, request, network) {
     return new Promise((resolve, reject) => {
-      const requests = [{ layer: 'SOCIAL', type: type, payload: data }]
-      const peer = this.network.network.bestNodeCovering(Number(mod))
-      this.network.peerQuery(peer.endpoint, requests).then((response) => {
-        resolve(response.results[0].result)
+      if (arguments.length !== 3) throw new RangeError('ModularPlatform.socialHandler() expects exactly three arguments')
+      if (typeof type !== 'string') throw new TypeError('First argument to ModularPlatform.socialHandler() must be an string')
+      if (typeof request !== 'object') throw new TypeError('Second argument to ModularPlatform.socialHandler() must be an object')
+      if (!(network instanceof Network)) throw new TypeError('Third argument to ModularPlatform.socialHandler() must be a Network')
+
+      if (!Number.isInteger(request.mod)) throw new TypeError('Request.mod must be an integer')
+      if (network.coverage.contains(request.mod) !== true) throw new RangeError('Node does not cover this mod. COVERAGE=' + network.coverage.toString())
+
+      function route (type) {
+        switch (type) {
+          /* Non-propagatory */
+          case 'AHOY': return network.platform.ahoyHandler.bind(network.platform)()
+          case 'USER': return network.platform.fetchUser.bind(network.platform)(request)
+
+          /* Propagatory */
+          case 'REGISTER': return network.platform.registerHandler.bind(network.platform)(request)
+          default: throw new TypeError('SOCIAL handler cannot serve this request type')
+        }
+      }
+
+      const allowPropagate = ['REGISTER']
+
+      route(type).then((response) => {
+        if (request.propagate === true && allowPropagate.includes(type)) {
+          this.propagate(request)
+        }
+        resolve(response)
       }).catch((error) => {
         reject(error)
       })
     })
   }
 
-  socialHandler (type, request, network) {
-    if (arguments.length !== 3) throw new RangeError('ModularPlatform.socialHandler() expects exactly three arguments')
-    if (typeof type !== 'string') throw new TypeError('First argument to ModularPlatform.socialHandler() must be an string')
-    if (typeof request !== 'object') throw new TypeError('Second argument to ModularPlatform.socialHandler() must be an object')
-    if (!(network instanceof Network)) throw new TypeError('Third argument to ModularPlatform.socialHandler() must be a Network')
-
-    switch (type) {
-      case 'AHOY': return network.platform.ahoyHandler.bind(network.platform)(request.payload)
-      case 'POST': return network.platform.postHandler.bind(network.platform)(request.payload)
-      case 'REGISTER': return network.platform.registerHandler.bind(network.platform)(request.payload)
-      case 'USER': return network.platform.fetchUser.bind(network.platform)(request.payload)
-      default: throw new TypeError('SOCIAL handler cannot serve this request type')
-    }
-  }
-
-  ahoyHandler (payload) {
+  ahoyHandler () {
     return new Promise((resolve, reject) => {
       if (this.network.status === NetworkStatus.READY) resolve('AYE AYE')
       else reject(new Error('NO NO'))
-    })
-  }
-
-  postHandler (payload) {
-    return new Promise((resolve, reject) => {
-      resolve({
-        dbPath: this.dbPath
-      })
     })
   }
 
@@ -104,7 +134,9 @@ class ModularPlatform {
     // todo: move timeout to config
   }
 
-  async registerHandler (payload) {
+  async registerHandler (request) {
+    const payload = request.payload
+
     if (typeof payload.key !== 'string') throw new TypeError('Incomplete request payload (key).')
     if (typeof payload.profileUpdate.user !== 'string') throw new TypeError('Incomplete request payload (user).')
     if (payload.profileUpdate.type !== 'PROFILE') throw new TypeError('Incomplete request payload (type).')
@@ -118,6 +150,11 @@ class ModularPlatform {
     const verifier = await ModularVerifier.loadUser(payload.key)
 
     if (verifier.id !== payload.profileUpdate.user) throw new Error('UID does not match key.')
+
+    const big = BigInt('0x' + verifier.id)
+    const mod = big % this.bigM
+
+    if (mod !== request.mod) throw new Error('UID does not match mod.')
 
     const newProfile = []
     Object.entries(payload.profile).forEach(entry => {
@@ -136,9 +173,16 @@ class ModularPlatform {
     return 'Saved user.'
   }
 
-  fetchUser (payload) {
+  fetchUser (request) {
+    const payload = request.payload
     return new Promise((resolve, reject) => {
       if (typeof payload.id !== 'string') throw new TypeError('User id must be a string')
+
+      const big = BigInt('0x' + payload.id)
+      const mod = big % this.bigM
+
+      if (mod !== request.mod) throw new Error('User id does not match mod')
+
       this.db.users.get(payload.id, (err, value) => {
         if (err) reject(new Error('User does not exist.'))
         resolve(JSON.parse(value))
@@ -158,7 +202,7 @@ class ModularPlatform {
     this.db.users.put('ME', user.id)
     packet.request.profile = Object.assign({}, newProfile)
     console.log(JSON.stringify(packet.request))
-    this.verifiedQuery(user.id, 'REGISTER', packet.request)
+    this.startPropagation(user.id, 'REGISTER', packet.request)
     return user
   }
 }

@@ -9,6 +9,7 @@ suite('index', () => {
         platform.onReady(() => {
           resolve()
         })
+        platform.useEndpoint('https://example.com')
         platform.initialize()
       })
     })
@@ -20,9 +21,10 @@ suite('index', () => {
           "network": "modular",
           "requests": [
               {"layer": "NET", "type": "PING"},
-              {"layer": "SOCIAL", "type": "AHOY"}
+              {"layer": "SOCIAL", "type": "AHOY", "mod": 0}
           ]
       }).then((response) => {
+        console.log(response)
         response.should.deep.equal({
           network: 'modular',
           version: 1,
