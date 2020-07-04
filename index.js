@@ -101,6 +101,7 @@ class ModularPlatform {
     if (!Number.isInteger(timestamp)) throw new TypeError('Timestamp must be an integer')
     if (!(timestamp <= Date.now())) throw new RangeError('Timestamp must be in the past')
     if (!(timestamp >= (Date.now() - 60000))) throw new RangeError('Timestamp must be recent')
+    // todo: move timeout to config
   }
 
   async registerHandler (payload) {
@@ -111,7 +112,7 @@ class ModularPlatform {
     if (typeof payload.profileUpdate.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
     if (typeof payload.profile !== 'object') throw new TypeError('Incomplete request payload (profile).')
 
-    if (await ModularUser.exists.bind(this)(payload.profileUpdate.user)) throw new Error('Already registered.')
+    if ((await ModularUser.exists.bind(this)(payload.profileUpdate.user)) !== false) throw new Error('Already registered.')
     ModularPlatform.validateTimestamp(payload.profileUpdate.timestamp)
 
     const verifier = await ModularVerifier.loadUser(payload.key)
@@ -129,7 +130,7 @@ class ModularPlatform {
     const user = new ModularUser(this)
     user.key = payload.key
     user.id = verifier.id
-    user.profile = newProfile
+    user.profile = Object.assign({}, newProfile)
     await user.save()
 
     return 'Saved user.'
@@ -167,12 +168,12 @@ class ModularUser {
     this.platform = platform
   }
 
-  static async exists (uid) {
-    this.db.users.get(uid, (err, value) => {
-      if (err) {
-        return false
-      }
-      return true
+  static exists (uid) {
+    return new Promise((resolve, reject) => {
+      this.db.users.get(uid, (err, value) => {
+        if (err) resolve(false)
+        else resolve(true)
+      })
     })
   }
 
