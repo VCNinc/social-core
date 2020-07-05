@@ -76,7 +76,7 @@ class ModularPlatform {
   }
 
   startPropagation (id, type, payload) {
-    const big = BigInt('0x' + id)
+    const big = BigInt('0x' + Buffer.from(id, 'base64').toString('hex'))
     const mod = big % this.bigM
     return this.propagate({
       layer: 'SOCIAL',
@@ -157,7 +157,7 @@ class ModularPlatform {
     ModularPlatform.validateTimestamp(payload.timestamp)
     ModularPlatform.validateTimestamp(payload.sig.timestamp)
 
-    const big = BigInt('0x' + payload.user)
+    const big = BigInt('0x' + Buffer.from(payload.user, 'base64').toString('hex'))
     const mod = big % this.bigM
 
     if (Number(mod) !== request.mod) throw new Error('User id does not match mod')
@@ -229,7 +229,7 @@ class ModularPlatform {
 
     if (verifier.id !== payload.profileUpdate.user) throw new Error('UID does not match key.')
 
-    const big = BigInt('0x' + verifier.id)
+    const big = BigInt('0x' + Buffer.from(verifier.id, 'base64').toString('hex'))
     const mod = big % this.bigM
 
     if (mod !== request.mod) throw new Error('UID does not match mod.')
@@ -259,7 +259,7 @@ class ModularPlatform {
     return new Promise((resolve, reject) => {
       if (typeof payload.id !== 'string') throw new TypeError('User id must be a string')
 
-      const big = BigInt('0x' + payload.id)
+      const big = BigInt('0x' + Buffer.from(payload.id, 'base64').toString('hex'))
       const mod = big % this.bigM
 
       if (Number(mod) !== request.mod) throw new Error('User id does not match mod')
@@ -279,7 +279,7 @@ class ModularPlatform {
     return new Promise((resolve, reject) => {
       if (typeof payload.id !== 'string') throw new TypeError('User id must be a string')
 
-      const big = BigInt('0x' + payload.id)
+      const big = BigInt('0x' + Buffer.from(payload.id, 'base64').toString('hex'))
       const mod = big % this.bigM
 
       if (Number(mod) !== request.mod) throw new Error('User id does not match mod')
@@ -321,9 +321,9 @@ class ModularPlatform {
 
   async registerUser (newProfile, passphrase) {
     const user = new ModularUser(this)
-    newProfile.HEAD = ModularTrustRoot.SHA256(user.id)
     const packet = await ModularSource.userRegistration(newProfile, passphrase)
     user.id = packet.source.id
+    newProfile.HEAD = ModularTrustRoot.SHA256(user.id)
     newProfile.LASTUPDATED = packet.request.profileUpdate.timestamp
     user.type = 'ME'
     user.source = packet.source
