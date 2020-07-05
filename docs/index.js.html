@@ -185,11 +185,12 @@ class ModularPlatform {
           /* Propagatory */
           case 'REGISTER': return network.platform.registerHandler.bind(network.platform)(request)
           case 'POST': return network.platform.postHandler.bind(network.platform)(request)
+          case 'FOLLOWS': return network.platform.followsHandler.bind(network.platform)(request)
           default: throw new TypeError('SOCIAL handler cannot serve this request type')
         }
       }
 
-      const allowPropagate = ['REGISTER', 'POST']
+      const allowPropagate = ['REGISTER', 'POST', 'FOLLOWS']
 
       route(type).then((response) => {
         if (request.propagate === true &amp;&amp; allowPropagate.includes(type)) {
@@ -212,8 +213,39 @@ class ModularPlatform {
   static validateTimestamp (timestamp) {
     if (!Number.isInteger(timestamp)) throw new TypeError('Timestamp must be an integer')
     if (!(timestamp &lt;= Date.now())) throw new RangeError('Timestamp must be in the past')
-    if (!(timestamp >= (Date.now() - 60000))) throw new RangeError('Timestamp must be recent')
+    // if (!(timestamp >= (Date.now() - 60000))) throw new RangeError('Timestamp must be recent')
     // todo: move timeout to config
+  }
+
+  async followsHandler (request) {
+    const payload = request.payload
+
+    if (typeof payload.user !== 'string') throw new TypeError('Incomplete request payload (user).')
+    if (!Array.isArray(payload.follows)) throw new TypeError('Incomplete request payload (follows).')
+    if (payload.follows.length > 4096) throw new RangeError('Follows list is too large.')
+    if (payload.follows.some((i) => i.length > 44)) throw new RangeError('Follows item is too large.')
+    if (typeof payload.sig !== 'string') throw new TypeError('Incomplete request payload (signature).')
+
+    ModularPlatform.validateTimestamp(payload.timestamp)
+
+    const big = BigInt('0x' + Buffer.from(payload.user, 'base64').toString('hex'))
+    const mod = big % this.bigM
+
+    if (Number(mod) !== request.mod) throw new Error('User id does not match mod')
+
+    const user = await this.loadUser(payload.user)
+
+    user.profile.FOLLOWS = ModularTrustRoot.SHA256(payload.follows.join())
+    user.profile.LASTUPDATED = payload.timestamp
+
+    if ((await user.verifier.verifyUserProfileUpdate(payload.sig, payload.timestamp, user.profile)) !== true) { throw new Error('Could not verify profile update.') }
+
+    user.signature = payload.sig
+    user.follows = payload.follows
+
+    await user.save()
+
+    return 'Saved follows.'
   }
 
   async postHandler (request) {
@@ -224,10 +256,9 @@ class ModularPlatform {
     if (payload.body.length > 1024) throw new RangeError('Post body is too large.')
     // make configurable
     if (typeof payload.prev !== 'string') throw new TypeError('Incomplete request payload (prev).')
-    if (typeof payload.sig.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
+    if (typeof payload.sig !== 'string') throw new TypeError('Incomplete request payload (signature).')
 
     ModularPlatform.validateTimestamp(payload.timestamp)
-    ModularPlatform.validateTimestamp(payload.sig.timestamp)
 
     const big = BigInt('0x' + Buffer.from(payload.user, 'base64').toString('hex'))
     const mod = big % this.bigM
@@ -241,10 +272,9 @@ class ModularPlatform {
     user.profile.HEAD = ModularTrustRoot.blockHash(payload.timestamp + payload.body, user.profile.HEAD)
     user.profile.LASTUPDATED = payload.timestamp
 
-    if ((await user.verifier.verifyUserProfileUpdate(payload.sig.signature, payload.sig.timestamp, user.profile)) !== true) { throw new Error('Could not verify profile update.') }
+    if ((await user.verifier.verifyUserProfileUpdate(payload.sig, payload.timestamp, user.profile)) !== true) { throw new Error('Could not verify profile update.') }
 
-    user.signature = payload.sig.signature
-    user.sigtime = payload.sig.timestamp
+    user.signature = payload.sig
 
     user.posts.unshift({
       timestamp: payload.timestamp,
@@ -266,7 +296,7 @@ class ModularPlatform {
           user.type = 'OTHER'
           user.key = data.key
           user.signature = data.signature
-          user.sigtime = data.sigtime
+          user.follows = new Set(data.follows)
           ModularVerifier.loadUser(data.key).then((verifier) => {
             user.verifier = verifier
             user.id = user.verifier.id
@@ -324,8 +354,8 @@ class ModularPlatform {
     user.profile = newProfile
     user.profile.LASTUPDATED = payload.profileUpdate.timestamp
     user.signature = payload.profileUpdate.signature
-    user.sigtime = payload.profileUpdate.timestamp
     user.posts = []
+    user.follows = new Set()
     await user.save()
 
     return 'Saved user.'
@@ -367,7 +397,6 @@ class ModularPlatform {
           profile: Object.assign({}, user.profile),
           posts: posts,
           signature: user.signature,
-          sigtime: user.sigtime,
           key: user.key
         })
       }).catch((err) => reject(err))
@@ -401,17 +430,15 @@ class ModularPlatform {
     const user = new ModularUser(this)
     const packet = await ModularSource.userRegistration(newProfile, passphrase)
     user.id = packet.source.id
-    newProfile.HEAD = ModularTrustRoot.SHA256(user.id)
-    newProfile.LASTUPDATED = packet.request.profileUpdate.timestamp
     user.type = 'ME'
     user.source = packet.source
     user.key = packet.privateKeyArmored
     user.profile = newProfile
     user.posts = []
+    user.follows = new Set()
     this.db.users.put('ME', user.id)
     packet.request.profile = Object.assign({}, newProfile)
     user.signature = packet.request.profileUpdate.signature
-    user.sigtime = packet.request.profileUpdate.timestamp
     user.save()
     await this.startPropagation(user.id, 'REGISTER', packet.request)
     return user
@@ -434,7 +461,7 @@ class ModularPlatform {
       const [key, value] = entry
       profile[key] = value
     })
-    if ((await verifier.verifyUserProfileUpdate(response.signature, response.sigtime, profile)) !== true) throw new Error('Signature could not be verified.')
+    if ((await verifier.verifyUserProfileUpdate(response.signature, profile.LASTUPDATED, profile)) !== true) throw new Error('Signature could not be verified.')
 
     let expected = profile.HEAD
     response.posts.forEach((post) => {
@@ -474,13 +501,48 @@ class ModularUser {
           key: this.key,
           profile: Object.assign({}, this.profile),
           signature: this.signature,
-          sigtime: this.sigtime
+          follows: [...this.follows]
         }), (err) => {
           if (err) reject(err)
           else resolve()
         })
       })
     })
+  }
+
+  async pushFollows () {
+    if (this.type !== 'ME') throw new TypeError('Cannot push follows from this account')
+    const timestamp = Date.now()
+    this.profile.LASTUPDATED = timestamp
+    const follows = [...this.follows]
+    this.profile.FOLLOWS = ModularTrustRoot.SHA256(follows.join())
+    const signature = await this.source.userProfileUpdate(this.profile)
+    this.signature = signature.signature
+    await this.platform.startPropagation(this.id, 'FOLLOWS', {
+      user: this.id,
+      timestamp: timestamp,
+      follows: follows,
+      sig: {
+        timestamp: signature.timestamp,
+        signature: signature.signature
+      }
+    })
+    await this.save()
+    return this.profile.FOLLOWS
+  }
+
+  async follow (uid) {
+    // make configurable
+    if (this.follows.size >= 4096) throw new RangeError('Maximum number of direct follows is 4096.')
+    this.follows.add(uid)
+    await this.pushFollows()
+    return uid
+  }
+
+  async unfollow (uid) {
+    this.follows.delete(uid)
+    await this.pushFollows()
+    return uid
   }
 
   async post (body) {
@@ -490,19 +552,14 @@ class ModularUser {
     const prev = this.profile.HEAD
     const timestamp = Date.now()
     this.profile.HEAD = ModularTrustRoot.blockHash(timestamp + body, prev)
-    this.profile.LASTUPDATED = timestamp
-    const signature = await this.source.userProfileUpdate(this.profile)
+    const signature = await this.source.userProfileUpdate(this.profile, timestamp)
     this.signature = signature.signature
-    this.sigtime = signature.timestamp
     await this.platform.startPropagation(this.id, 'POST', {
       user: this.id,
       timestamp: timestamp,
       body: body,
       prev: prev,
-      sig: {
-        timestamp: signature.timestamp,
-        signature: signature.signature
-      }
+      sig: signature.signature
     })
     this.posts.unshift({
       timestamp: timestamp,
@@ -513,19 +570,11 @@ class ModularUser {
     return this.profile.HEAD
   }
 
-  static login (uid, passphrase) {}
-  static other (uid) {}
-
-  follow (user) {}
-
   /** @todo implementation */
   updateProfile (fields) {}
 
   /** @todo implementation */
   verifySocial (platform, username) {}
-
-  /** @todo implementation */
-  unfollow (user) {}
 
   /** @todo implementation */
   delete () {}
@@ -569,7 +618,7 @@ module.exports.ModularUser = ModularUser
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.4</a> on Sun Jul 05 2020 05:02:30 GMT-0500 (Central Daylight Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.4</a> on Sun Jul 05 2020 17:33:02 GMT-0500 (Central Daylight Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
