@@ -55,7 +55,7 @@
   "dependencies": {
     "@modular/config": "^1.0.15",
     "@modular/dmnc-core": "^1.0.2",
-    "@modular/smcc-core": "^1.1.8",
+    "@modular/smcc-core": "^1.1.9",
     "@modular/standard": "^1.0.17",
     "level": "^6.0.1"
   }

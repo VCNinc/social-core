@@ -66,6 +66,8 @@ class ModularPlatform {
     const fullReach = newReach.concat(request.reach)
     request.reach = fullReach
 
+    console.log(JSON_)
+
     const promises = []
     newReach.forEach((node) => {
       const promise = this.network.peerQuery(node, [request]) // switch to queued version
@@ -382,7 +384,6 @@ class ModularPlatform {
     user.posts = []
     user.follows = new Set()
     this.db.users.put('ME', user.id)
-    packet.request.profile = Object.assign({}, newProfile)
     user.signature = packet.request.profileUpdate.signature
     user.save()
     await this.startPropagation(user.id, 'REGISTER', packet.request)
