@@ -58,7 +58,7 @@ class ModularPlatform {
   propagate (request) {
     if (!Array.isArray(request.reach)) throw new TypeError('Request.reach must be an array')
 
-    if(request.type === 'POST') console.log(JSON.stringify(request))
+    // if(request.type === 'POST') console.log(JSON.stringify(request))
 
     const mod = request.mod
     const oldReach = new Set(request.reach)
