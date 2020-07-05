@@ -367,13 +367,31 @@ class ModularPlatform {
       id: uid,
       max: max
     })
+
     if (result.status !== 'OK') throw new Error('Could not find user.')
 
-    // verify key matches uid
-    // validate signature using key
-    // validate posts using signature
+    const response = result.response
+    const verifier = await ModularVerifier.loadUser(response.key)
+    if (verifier.id !== uid) throw new Error('User ID mismatch')
 
-    return result.response
+    const profile = []
+    Object.entries(response.profile).forEach(entry => {
+      const [key, value] = entry
+      profile[key] = value
+    })
+    if ((await verifier.verifyUserProfileUpdate(response.signature, response.sigtime, profile)) !== true) throw new Error('Signature could not be verified.')
+
+    let expected = profile.HEAD
+    response.posts.forEach((post) => {
+      if (expected === ModularTrustRoot.blockHash(post.timestamp + post.body, post.prev)) {
+        post.verified = true
+        expected = post.prev
+      } else {
+        throw new Error('Posts could not be verified')
+      }
+    })
+
+    return response
   }
 }
 

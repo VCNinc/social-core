@@ -53,7 +53,9 @@ suite('index', () => {
     await user.post('Hello, world!')
     await user.post('Another post!')
     await user.post('A final post!')
-    let posts = await this.platform.getUserPosts(user.id)
-    console.log(posts)
+    let posts = (await this.platform.getUserPosts(user.id)).posts
+    posts[0].body.should.equal('A final post!')
+    posts[1].body.should.equal('Another post!')
+    posts[2].body.should.equal('Hello, world!')
   })
 })
