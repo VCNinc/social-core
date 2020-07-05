@@ -66,8 +66,6 @@ class ModularPlatform {
     const fullReach = newReach.concat(request.reach)
     request.reach = fullReach
 
-    console.log(JSON.stringify(request) + '\n')
-
     const promises = []
     newReach.forEach((node) => {
       const promise = this.network.peerQuery(node, [request])
