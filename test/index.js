@@ -50,16 +50,9 @@ suite('index', () => {
     newProfile['email'] = "test2@example.com"
     newProfile['etc'] = '12345'
     let user = await this.platform.registerUser(newProfile, 'Tr0ub4dour&3')
-    let pid = await user.post('Hello, world!')
-    const big = BigInt('0x' + Buffer.from(user.id, 'base64').toString('hex'))
-    const mod = big % this.platform.bigM
-    this.platform.network.handleQuery({
-        "network": "modular",
-        "requests": [
-            {"layer": "SOCIAL", "type": "POSTS", "payload": {
-              "id": user.id
-            }, "mod": Number(mod)},
-        ]
-    })
+    await user.post('Hello, world!')
+    await user.post('Another post!')
+    await user.post('A final post!')
+    this.platform.getUserPosts(user.id)
   })
 })

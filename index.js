@@ -68,7 +68,7 @@ class ModularPlatform {
 
     const promises = []
     newReach.forEach((node) => {
-      const promise = this.network.peerQuery(node, [request])
+      const promise = this.network.peerQuery(node, [request]) // switch to queued version
       promises.push(promise)
     })
 
@@ -85,6 +85,25 @@ class ModularPlatform {
       mod: Number(mod),
       reach: [],
       propagate: true
+    })
+  }
+
+  startSingleton (id, type, payload) {
+    return new Promise((resolve, reject) => {
+      const big = BigInt('0x' + Buffer.from(id, 'base64').toString('hex'))
+      const mod = Number(big % this.bigM)
+      let node = this.network.network.bestNodeCovering(mod)
+      // switch to queued version
+      this.network.peerQuery(node.endpoint, [{
+        layer: 'SOCIAL',
+        type: type,
+        payload: payload,
+        mod: mod
+      }]).then((result) => {
+        resolve(result.results[0].result)
+      }).catch((error) => {
+        reject(error)
+      })
     })
   }
 
@@ -172,7 +191,7 @@ class ModularPlatform {
     user.signature = payload.sig.signature
     user.sigtime = payload.sig.timestamp
 
-    user.posts.push({
+    user.posts.unshift({
       timestamp: payload.timestamp,
       body: payload.body,
       prev: payload.prev
@@ -341,15 +360,20 @@ class ModularPlatform {
     await this.startPropagation(user.id, 'REGISTER', packet.request)
     return user
   }
+
+  async getUserPosts (uid, max=256) {
+    let result = await this.startSingleton(uid, 'POSTS', {
+      id: uid,
+      max: max
+    })
+    if (result.status !== 'OK') throw new Error('Could not find user.')
+    return result.response
+  }
 }
 
 class ModularUser {
   constructor (platform) {
     this.platform = platform
-  }
-
-  static getPosts (uid) {
-    // todo
   }
 
   static exists (uid) {
@@ -401,7 +425,7 @@ class ModularUser {
         signature: signature.signature
       }
     })
-    this.posts.push({
+    this.posts.unshift({
       timestamp: timestamp,
       body: body,
       prev: prev
