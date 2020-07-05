@@ -150,7 +150,7 @@ class ModularPlatform {
     if (typeof payload.user !== 'string') throw new TypeError('Incomplete request payload (user).')
     if (typeof payload.body !== 'string') throw new TypeError('Incomplete request payload (body).')
     if (payload.body.length > 1024) throw new RangeError('Post body is too large.')
-      // make configurable
+    // make configurable
     if (typeof payload.prev !== 'string') throw new TypeError('Incomplete request payload (prev).')
     if (typeof payload.sig.body !== 'string') throw new TypeError('Incomplete request payload (body).')
     if (typeof payload.sig.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
