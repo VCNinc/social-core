@@ -58,6 +58,8 @@ class ModularPlatform {
   propagate (request) {
     if (!Array.isArray(request.reach)) throw new TypeError('Request.reach must be an array')
 
+    if(request.type === 'POST') console.log(JSON.stringify(request))
+
     const mod = request.mod
     const oldReach = new Set(request.reach)
     const newReach = this.network.network.nodesCovering(mod)
@@ -148,9 +150,8 @@ class ModularPlatform {
     if (typeof payload.user !== 'string') throw new TypeError('Incomplete request payload (user).')
     if (typeof payload.body !== 'string') throw new TypeError('Incomplete request payload (body).')
     if (payload.body.length > 1024) throw new RangeError('Post body is too large.')
-    // make configurable
+      // make configurable
     if (typeof payload.prev !== 'string') throw new TypeError('Incomplete request payload (prev).')
-    if (payload.sig.type !== 'PROFILE') throw new TypeError('Incomplete request payload (type).')
     if (typeof payload.sig.body !== 'string') throw new TypeError('Incomplete request payload (body).')
     if (typeof payload.sig.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
 
@@ -397,7 +398,10 @@ class ModularUser {
       timestamp: timestamp,
       body: body,
       prev: prev,
-      sig: signature
+      sig: {
+        timestamp: signature.timestamp,
+        signature: signature.signature
+      }
     })
     this.posts.push({
       timestamp: timestamp,
