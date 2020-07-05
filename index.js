@@ -58,8 +58,6 @@ class ModularPlatform {
   propagate (request) {
     if (!Array.isArray(request.reach)) throw new TypeError('Request.reach must be an array')
 
-    // if(request.type === 'POST') console.log(JSON.stringify(request))
-
     const mod = request.mod
     const oldReach = new Set(request.reach)
     const newReach = this.network.network.nodesCovering(mod)
@@ -67,6 +65,8 @@ class ModularPlatform {
       .filter(node => !oldReach.has(node))
     const fullReach = newReach.concat(request.reach)
     request.reach = fullReach
+
+    console.log(JSON.stringify(request) + "\n")
 
     const promises = []
     newReach.forEach((node) => {
@@ -121,7 +121,7 @@ class ModularPlatform {
 
       route(type).then((response) => {
         if (request.propagate === true && allowPropagate.includes(type)) {
-          this.propagate(request)
+          network.platform.propagate(request)
         }
         resolve(response)
       }).catch((error) => {
@@ -234,12 +234,12 @@ class ModularPlatform {
     const big = BigInt('0x' + Buffer.from(verifier.id, 'base64').toString('hex'))
     const mod = big % this.bigM
 
-    if (mod !== request.mod) throw new Error('UID does not match mod.')
+    if (Number(mod) !== request.mod) throw new Error('UID does not match mod.')
 
     const newProfile = []
     Object.entries(payload.profile).forEach(entry => {
       const [key, value] = entry
-      newProfile[key] = value
+      if (key !== 'LASTUPDATED') newProfile[key] = value
     })
 
     // TODO: limit profile size
@@ -253,6 +253,7 @@ class ModularPlatform {
     user.profile.LASTUPDATED = payload.profileUpdate.timestamp
     user.signature = payload.profileUpdate.signature
     user.sigtime = payload.profileUpdate.timestamp
+    user.posts = []
     await user.save()
 
     return 'Saved user.'
