@@ -92,7 +92,7 @@ class ModularPlatform {
     return new Promise((resolve, reject) => {
       const big = BigInt('0x' + Buffer.from(id, 'base64').toString('hex'))
       const mod = Number(big % this.bigM)
-      let node = this.network.network.bestNodeCovering(mod)
+      const node = this.network.network.bestNodeCovering(mod)
       // switch to queued version
       this.network.peerQuery(node.endpoint, [{
         layer: 'SOCIAL',
@@ -361,8 +361,8 @@ class ModularPlatform {
     return user
   }
 
-  async getUserPosts (uid, max=256) {
-    let result = await this.startSingleton(uid, 'POSTS', {
+  async getUserPosts (uid, max = 256) {
+    const result = await this.startSingleton(uid, 'POSTS', {
       id: uid,
       max: max
     })
