@@ -123,7 +123,7 @@ class ModularPlatform {
         switch (type) {
           /* Non-propagatory */
           case 'AHOY': return network.platform.ahoyHandler.bind(network.platform)()
-          case 'USER': return network.platform.fetchUser.bind(network.platform)(request)
+          // case 'USER': return network.platform.fetchUser.bind(network.platform)(request)
           case 'POSTS': return network.platform.fetchPosts.bind(network.platform)(request)
           // case 'USERS': return network.platform.userList.bind(network.platform)(request)
 
@@ -183,7 +183,7 @@ class ModularPlatform {
 
     if (user.profile.HEAD !== payload.prev) throw new Error('Head does not match provided; RECENCY=' + user.profile.LASTUPDATED)
 
-    user.profile.HEAD = ModularTrustRoot.blockHash(payload.body, user.profile.HEAD)
+    user.profile.HEAD = ModularTrustRoot.blockHash(payload.timestamp + payload.body, user.profile.HEAD)
     user.profile.LASTUPDATED = payload.timestamp
 
     if ((await user.verifier.verifyUserProfileUpdate(payload.sig.signature, payload.sig.timestamp, user.profile)) !== true) { throw new Error('Could not verify profile update.') }
@@ -312,7 +312,8 @@ class ModularPlatform {
           profile: Object.assign({}, user.profile),
           posts: posts,
           signature: user.signature,
-          sigtime: user.sigtime
+          sigtime: user.sigtime,
+          key: user.key
         })
       }).catch((err) => reject(err))
     })
@@ -367,6 +368,11 @@ class ModularPlatform {
       max: max
     })
     if (result.status !== 'OK') throw new Error('Could not find user.')
+
+    // verify key matches uid
+    // validate signature using key
+    // validate posts using signature
+
     return result.response
   }
 }
@@ -409,8 +415,8 @@ class ModularUser {
     if (typeof body !== 'string') throw new TypeError('Post body must be a string')
     if (body.length > 1024) throw new RangeError('Post size is above maximum allowable') // configurable max length
     const prev = this.profile.HEAD
-    this.profile.HEAD = ModularTrustRoot.blockHash(body, prev)
     const timestamp = Date.now()
+    this.profile.HEAD = ModularTrustRoot.blockHash(timestamp + body, prev)
     this.profile.LASTUPDATED = timestamp
     const signature = await this.source.userProfileUpdate(this.profile)
     this.signature = signature.signature
