@@ -12,7 +12,7 @@
 
 /* global BigInt */
 const { Network, NetworkStatus } = require('@modular/dmnc-core')
-const { ModularSource, ModularVerifier } = require('@modular/smcc-core')
+const { ModularTrustRoot, ModularSource, ModularVerifier } = require('@modular/smcc-core')
 const { ModularConfiguration } = require('@modular/config')
 const standard = require('@modular/standard')
 const level = require('level')
@@ -95,22 +95,27 @@ class ModularPlatform {
       if (typeof request !== 'object') throw new TypeError('Second argument to ModularPlatform.socialHandler() must be an object')
       if (!(network instanceof Network)) throw new TypeError('Third argument to ModularPlatform.socialHandler() must be a Network')
 
-      if (!Number.isInteger(request.mod)) throw new TypeError('Request.mod must be an integer')
-      if (network.coverage.contains(request.mod) !== true) throw new RangeError('Node does not cover this mod. COVERAGE=' + network.coverage.toString())
+      if (type !== 'AHOY') {
+        if (!Number.isInteger(request.mod)) throw new TypeError('Request.mod must be an integer')
+        if (network.coverage.contains(request.mod) !== true) throw new RangeError('Node does not cover this mod. COVERAGE=' + network.coverage.toString())
+      }
 
       function route (type) {
         switch (type) {
           /* Non-propagatory */
           case 'AHOY': return network.platform.ahoyHandler.bind(network.platform)()
           case 'USER': return network.platform.fetchUser.bind(network.platform)(request)
+          case 'POSTS': return network.platform.fetchPosts.bind(network.platform)(request)
+          // case 'USERS': return network.platform.userList.bind(network.platform)(request)
 
           /* Propagatory */
           case 'REGISTER': return network.platform.registerHandler.bind(network.platform)(request)
+          case 'POST': return network.platform.postHandler.bind(network.platform)(request)
           default: throw new TypeError('SOCIAL handler cannot serve this request type')
         }
       }
 
-      const allowPropagate = ['REGISTER']
+      const allowPropagate = ['REGISTER', 'POST']
 
       route(type).then((response) => {
         if (request.propagate === true && allowPropagate.includes(type)) {
@@ -135,6 +140,76 @@ class ModularPlatform {
     if (!(timestamp <= Date.now())) throw new RangeError('Timestamp must be in the past')
     if (!(timestamp >= (Date.now() - 60000))) throw new RangeError('Timestamp must be recent')
     // todo: move timeout to config
+  }
+
+  async postHandler (request) {
+    const payload = request.payload
+
+    if (typeof payload.user !== 'string') throw new TypeError('Incomplete request payload (user).')
+    if (typeof payload.body !== 'string') throw new TypeError('Incomplete request payload (body).')
+    if (payload.body.length > 1024) throw new RangeError('Post body is too large.')
+    // make configurable
+    if (typeof payload.prev !== 'string') throw new TypeError('Incomplete request payload (prev).')
+    if (payload.sig.type !== 'PROFILE') throw new TypeError('Incomplete request payload (type).')
+    if (typeof payload.sig.body !== 'string') throw new TypeError('Incomplete request payload (body).')
+    if (typeof payload.sig.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
+
+    ModularPlatform.validateTimestamp(payload.timestamp)
+    ModularPlatform.validateTimestamp(payload.sig.timestamp)
+
+    const big = BigInt('0x' + payload.user)
+    const mod = big % this.bigM
+
+    if (Number(mod) !== request.mod) throw new Error('User id does not match mod')
+
+    const user = await this.loadUser(payload.user)
+
+    if (user.profile.HEAD !== payload.prev) throw new Error('Head does not match provided; RECENCY=' + user.profile.LASTUPDATED)
+
+    user.profile.HEAD = ModularTrustRoot.blockHash(payload.body, user.profile.HEAD)
+    user.profile.LASTUPDATED = payload.timestamp
+
+    if ((await user.verifier.verifyUserProfileUpdate(payload.sig.signature, payload.sig.timestamp, user.profile)) !== true) { throw new Error('Could not verify profile update.') }
+
+    user.signature = payload.sig.signature
+    user.sigtime = payload.sig.timestamp
+
+    user.posts.push({
+      timestamp: payload.timestamp,
+      body: payload.body,
+      prev: payload.prev
+    })
+
+    await user.save()
+
+    return 'Saved post.'
+  }
+
+  loadUser (uid) {
+    return new Promise((resolve, reject) => {
+      this.db.users.get(uid, (err, value) => {
+        if (err) { reject(new Error('User does not exist.')) } else {
+          const data = resolve(JSON.parse(value))
+          const user = new ModularUser(this)
+          user.type = 'OTHER'
+          user.key = data.key
+          ModularVerifier.loadUser(data.key).then((verifier) => {
+            user.verifier = verifier
+            user.id = user.verifier.id
+            const profile = []
+            Object.entries(data.profile).forEach(entry => {
+              const [key, value] = entry
+              profile[key] = value
+            })
+            user.profile = profile
+            this.db.posts.get(uid, (err, value) => {
+              if (err) { user.posts = [] } else { user.posts = JSON.parse(value) }
+              resolve(user)
+            })
+          })
+        }
+      })
+    })
   }
 
   async registerHandler (request) {
@@ -165,12 +240,15 @@ class ModularPlatform {
       newProfile[key] = value
     })
 
-    if (!(await verifier.verifyUserProfileUpdate(payload.profileUpdate.signature, payload.profileUpdate.timestamp, newProfile))) { throw new Error('Could not verify profile.') }
+    if ((await verifier.verifyUserProfileUpdate(payload.profileUpdate.signature, payload.profileUpdate.timestamp, newProfile)) !== true) { throw new Error('Could not verify profile.') }
 
     const user = new ModularUser(this)
     user.key = payload.key
     user.id = verifier.id
-    user.profile = Object.assign({}, newProfile)
+    user.profile = newProfile
+    user.profile.LASTUPDATED = payload.profileUpdate.timestamp
+    user.signature = payload.profileUpdate.signature
+    user.sigtime = payload.profileUpdate.timestamp
     await user.save()
 
     return 'Saved user.'
@@ -193,18 +271,70 @@ class ModularPlatform {
     })
   }
 
+  fetchPosts (request) {
+    var max = 256 // make configurable
+    if (Number.isInteger(request.max) && request.max > 0 && request.max < max) max = request.max
+    const payload = request.payload
+
+    return new Promise((resolve, reject) => {
+      if (typeof payload.id !== 'string') throw new TypeError('User id must be a string')
+
+      const big = BigInt('0x' + payload.id)
+      const mod = big % this.bigM
+
+      if (Number(mod) !== request.mod) throw new Error('User id does not match mod')
+
+      this.loadUser(payload.id).then((user) => {
+        const posts = user.posts.slice(0, max)
+        resolve({
+          profile: Object.assign({}, user.profile),
+          posts: posts,
+          signature: user.signature,
+          sigtime: user.sigtime
+        })
+      }).catch((err) => reject(err))
+    })
+  }
+
+  userList (request) {
+    const max = 100
+    // configure maximum
+    // bulk downloads may need dedicated async process that bundles data,
+    // generates archive, and uploads back to endpoint asynchronously
+    return new Promise((resolve, reject) => {
+      const users = []
+      this.db.users.createReadStream({ limit: max })
+        .on('data', (data) => {
+          users.push(JSON.parse(data.value))
+        })
+        .on('error', (err) => {
+          reject(err)
+        })
+        .on('close', () => {
+          reject(new Error('Stream error'))
+        })
+        .on('end', () => {
+          resolve(users)
+        })
+    })
+  }
+
   async registerUser (newProfile, passphrase) {
     const user = new ModularUser(this)
+    newProfile.HEAD = ModularTrustRoot.SHA256(user.id)
     const packet = await ModularSource.userRegistration(newProfile, passphrase)
+    user.id = packet.source.id
+    newProfile.LASTUPDATED = packet.request.profileUpdate.timestamp
     user.type = 'ME'
     user.source = packet.source
-    user.id = packet.source.id
     user.key = packet.privateKeyArmored
     user.profile = newProfile
-    user.save()
+    user.posts = []
     this.db.users.put('ME', user.id)
     packet.request.profile = Object.assign({}, newProfile)
-    console.log(JSON.stringify(packet.request))
+    user.signature = packet.request.profileUpdate.signature
+    user.sigtime = packet.request.profileUpdate.timestamp
+    user.save()
     await this.startPropagation(user.id, 'REGISTER', packet.request)
     return user
   }
@@ -224,21 +354,44 @@ class ModularUser {
     })
   }
 
-  toString () {
-    return JSON.stringify({
-      id: this.id,
-      key: this.key,
-      profile: this.profile
+  save () {
+    return new Promise((resolve, reject) => {
+      // make max post quantity configure
+      this.platform.db.posts.put(this.id, JSON.stringify(this.posts.slice(0, 256)), (err) => {
+        if (err) reject(err)
+        this.platform.db.users.put(this.id, JSON.stringify({
+          id: this.id,
+          key: this.key,
+          profile: Object.assign({}, this.profile),
+          signature: this.signature,
+          sigtime: this.sigtime
+        }), (err) => {
+          if (err) reject(err)
+          else resolve()
+        })
+      })
     })
   }
 
-  save () {
-    return new Promise((resolve, reject) => {
-      this.platform.db.users.put(this.id, this.toString(), (err) => {
-        if (err) reject(err)
-        else resolve()
-      })
+  async post (body) {
+    if (this.type !== 'ME') throw new TypeError('Cannot post from this account')
+    if (typeof body !== 'string') throw new TypeError('Post body must be a string')
+    if (body.length > 1024) throw new RangeError('Post size is above maximum allowable') // configurable max length
+    const prev = this.profile.HEAD
+    this.profile.HEAD = ModularTrustRoot.blockHash(body, prev)
+    const timestamp = Date.now()
+    this.profile.LASTUPDATED = timestamp
+    const signature = await this.source.userProfileUpdate(this.profile)
+    this.signature = signature.signature
+    this.sigtime = signature.timestamp
+    await this.platform.startPropagation(this.id, 'POST', {
+      user: this.id,
+      timestamp: timestamp,
+      body: body,
+      prev: prev,
+      sig: signature
     })
+    await this.save()
   }
 
   static login (uid, passphrase) {}
@@ -268,33 +421,18 @@ class ModularUser {
   static hidePost (pidToHide) {}
 }
 
-class ModularPost {
-  constructor (author) {
-    this.author = author
-  }
-
-  setType (type) {}
-  setTitle (title) {}
-  setLink (link) {}
-  setBody (body) {}
-  setParent (parent) {}
-  addModerator (moderator) {}
-  upload () {}
-}
-
-/** @todo implementation */
-class ModularMessage {
-  constructor (sender, recipient) {
-    this.sender = sender
-    this.recipient = recipient
-  }
-
-  setBody (body) { this.body = body }
-  send () {}
-}
+// /** @todo implementation */
+// class ModularMessage {
+//   constructor (sender, recipient) {
+//     this.sender = sender
+//     this.recipient = recipient
+//   }
+//
+//   setBody (body) { this.body = body }
+//   send () {}
+// }
 
 /* Module Exports */
 module.exports.ModularPlatform = ModularPlatform
 module.exports.ModularUser = ModularUser
-module.exports.ModularPost = ModularPost
-module.exports.ModularMessage = ModularMessage
+// module.exports.ModularMessage = ModularMessage
