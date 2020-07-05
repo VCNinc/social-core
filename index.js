@@ -189,10 +189,12 @@ class ModularPlatform {
     return new Promise((resolve, reject) => {
       this.db.users.get(uid, (err, value) => {
         if (err) { reject(new Error('User does not exist.')) } else {
-          const data = resolve(JSON.parse(value))
+          const data = JSON.parse(value)
           const user = new ModularUser(this)
           user.type = 'OTHER'
           user.key = data.key
+          user.signature = data.signature
+          user.sigtime = data.sigtime
           ModularVerifier.loadUser(data.key).then((verifier) => {
             user.verifier = verifier
             user.id = user.verifier.id
@@ -239,6 +241,8 @@ class ModularPlatform {
       const [key, value] = entry
       newProfile[key] = value
     })
+
+    // TODO: limit profile size
 
     if ((await verifier.verifyUserProfileUpdate(payload.profileUpdate.signature, payload.profileUpdate.timestamp, newProfile)) !== true) { throw new Error('Could not verify profile.') }
 
@@ -345,6 +349,10 @@ class ModularUser {
     this.platform = platform
   }
 
+  static getPosts (uid) {
+    // todo
+  }
+
   static exists (uid) {
     return new Promise((resolve, reject) => {
       this.db.users.get(uid, (err, value) => {
@@ -391,7 +399,13 @@ class ModularUser {
       prev: prev,
       sig: signature
     })
+    this.posts.push({
+      timestamp: timestamp,
+      body: body,
+      prev: prev
+    })
     await this.save()
+    return this.profile.HEAD
   }
 
   static login (uid, passphrase) {}

@@ -39,8 +39,27 @@ suite('index', () => {
 
   test('register', async () => {
     const newProfile = []
-    newProfile['name'] = "Modulo"
-    newProfile['email'] = "modzero@protonmail.com"
+    newProfile['name'] = "Test"
+    newProfile['email'] = "testuser@example.com"
     let user = await this.platform.registerUser(newProfile, 'Tr0ub4dour&3')
+  })
+
+  test('full post flow', async () => {
+    const newProfile = []
+    newProfile['name'] = "Test 2"
+    newProfile['email'] = "test2@example.com"
+    newProfile['etc'] = '12345'
+    let user = await this.platform.registerUser(newProfile, 'Tr0ub4dour&3')
+    let pid = await user.post('Hello, world!')
+    const big = BigInt('0x' + Buffer.from(user.id, 'base64').toString('hex'))
+    const mod = big % this.platform.bigM
+    this.platform.network.handleQuery({
+        "network": "modular",
+        "requests": [
+            {"layer": "SOCIAL", "type": "POSTS", "payload": {
+              "id": user.id
+            }, "mod": Number(mod)},
+        ]
+    })
   })
 })
