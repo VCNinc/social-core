@@ -64,8 +64,8 @@ suite('index', () => {
   //   u1['name'] = 'U1'
   //   let user1 = await this.platform.registerUser(u1, 'Tr0ub4dour&3')
   //
-  //   let posts = (await this.platform.getUserProfile(user1.id))
-  //   console.log(posts)
+  //   let profile = (await this.platform.getUserProfile(user1.id)).profile
+  //   profile.name.should.equal('U1')
   // })
   //
   // test('full follow flow', async () => {

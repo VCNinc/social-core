@@ -127,8 +127,8 @@ class ModularPlatform {
         switch (type) {
           /* Non-propagatory */
           case 'AHOY': return network.platform.ahoyHandler.bind(network.platform)()
+          case 'PROFILE': return network.platform.fetchProfile.bind(network.platform)(request)
           // case 'USER': return network.platform.fetchUser.bind(network.platform)(request)
-          case 'POSTS': return network.platform.fetchPosts.bind(network.platform)(request)
           // case 'USERS': return network.platform.userList.bind(network.platform)(request)
 
           /* Propagatory */
@@ -324,9 +324,13 @@ class ModularPlatform {
     })
   }
 
-  fetchPosts (request) {
-    var max = 256 // make configurable
-    if (Number.isInteger(request.max) && request.max > 0 && request.max < max) max = request.max
+  fetchProfile (request) {
+    var maxPosts = 256 // make configurable
+    if (Number.isInteger(request.maxPosts) && request.maxPosts > 0 && request.maxPosts < maxPosts) maxPosts = request.maxPosts
+
+    var maxFollows = 4096 // make configurable
+    if (Number.isInteger(request.maxFollows) && request.maxFollows > 0 && request.maxFollows < maxFollows) maxFollows = request.maxFollows
+
     const payload = request.payload
 
     return new Promise((resolve, reject) => {
@@ -338,10 +342,12 @@ class ModularPlatform {
       if (Number(mod) !== request.mod) throw new Error('User id does not match mod')
 
       this.loadUser(payload.id).then((user) => {
-        const posts = user.posts.slice(0, max)
+        const posts = user.posts.slice(0, maxPosts)
+        const follows = user.follows.slice(0, maxFollows)
         resolve({
           profile: Object.assign({}, user.profile),
           posts: posts,
+          follows: follows,
           signature: user.signature,
           key: user.key
         })
@@ -389,10 +395,11 @@ class ModularPlatform {
     return user
   }
 
-  async getUserProfile (uid, max = 256) {
-    const result = await this.startSingleton(uid, 'POSTS', {
+  async getUserProfile (uid, maxPosts = 256, maxFollows = 4096) {
+    const result = await this.startSingleton(uid, 'PROFILE', {
       id: uid,
-      max: max
+      maxPosts: maxPosts,
+      maxFollows: maxFollows
     })
 
     if (result.status !== 'OK') throw new Error('Could not find user.')
