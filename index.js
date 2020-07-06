@@ -66,7 +66,7 @@ class ModularPlatform {
     const fullReach = newReach.concat(request.reach)
     request.reach = fullReach
 
-    // console.log(JSON.stringify(request))
+    console.log(JSON.stringify(request) + "\n")
 
     const promises = []
     newReach.forEach((node) => {
@@ -102,7 +102,7 @@ class ModularPlatform {
         payload: payload,
         mod: mod
       }
-      // console.log(request)
+      console.log(JSON.stringify(request) + "\n")
       this.network.peerQuery(node.endpoint, [request]).then((result) => {
         resolve(result.results[0].result)
       }).catch((error) => {
@@ -342,12 +342,12 @@ class ModularPlatform {
       if (Number(mod) !== request.mod) throw new Error('User id does not match mod')
 
       this.loadUser(payload.id).then((user) => {
-        const posts = user.posts.slice(0, maxPosts)
-        const follows = user.follows.slice(0, maxFollows)
+        const posts = user.posts
+        const follows = [...user.follows]
         resolve({
           profile: Object.assign({}, user.profile),
-          posts: posts,
-          follows: follows,
+          posts: posts.slice(0, maxPosts),
+          follows: follows.slice(0, maxFollows),
           signature: user.signature,
           key: user.key
         })
