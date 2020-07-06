@@ -328,8 +328,6 @@ class ModularPlatform {
     var maxPosts = 256 // make configurable
     if (Number.isInteger(request.maxPosts) && request.maxPosts > 0 && request.maxPosts < maxPosts) maxPosts = request.maxPosts
 
-    var maxFollows = 4096 // make configurable
-    if (Number.isInteger(request.maxFollows) && request.maxFollows > 0 && request.maxFollows < maxFollows) maxFollows = request.maxFollows
 
     const payload = request.payload
 
@@ -343,14 +341,14 @@ class ModularPlatform {
 
       this.loadUser(payload.id).then((user) => {
         const posts = user.posts
-        const follows = [...user.follows]
-        resolve({
+        if (request.withFollows === true) results.follows = [...user.follows],
+        results = {
           profile: Object.assign({}, user.profile),
           posts: posts.slice(0, maxPosts),
-          follows: follows.slice(0, maxFollows),
           signature: user.signature,
           key: user.key
-        })
+        }
+        resolve(results)
       }).catch((err) => reject(err))
     })
   }
@@ -395,11 +393,11 @@ class ModularPlatform {
     return user
   }
 
-  async getUserProfile (uid, maxPosts = 256, maxFollows = 4096) {
+  async getUserProfile (uid, maxPosts = 256, withFollows = true) {
     const result = await this.startSingleton(uid, 'PROFILE', {
       id: uid,
       maxPosts: maxPosts,
-      maxFollows: maxFollows
+      withFollows: withFollows
     })
 
     if (result.status !== 'OK') throw new Error('Could not find user.')
