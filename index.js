@@ -173,7 +173,7 @@ class ModularPlatform {
     if (!Array.isArray(payload.follows)) throw new TypeError('Incomplete request payload (follows).')
     if (payload.follows.length > 4096) throw new RangeError('Follows list is too large.')
     if (payload.follows.some((i) => i.length > 44)) throw new RangeError('Follows item is too large.')
-    if (typeof payload.sig !== 'string') throw new TypeError('Incomplete request payload (signature).')
+    if (typeof payload.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
 
     ModularPlatform.validateTimestamp(payload.timestamp)
 
@@ -187,9 +187,9 @@ class ModularPlatform {
     user.profile.FOLLOWS = ModularTrustRoot.SHA256(payload.follows.join())
     user.profile.LASTUPDATED = payload.timestamp
 
-    if ((await user.verifier.verifyUserProfileUpdate(payload.sig, payload.timestamp, user.profile)) !== true) { throw new Error('Could not verify profile update.') }
+    if ((await user.verifier.verifyUserProfileUpdate(payload.signature, payload.timestamp, user.profile)) !== true) { throw new Error('Could not verify profile update.') }
 
-    user.signature = payload.sig
+    user.signature = payload.signature
     user.follows = payload.follows
 
     await user.save()
@@ -205,7 +205,7 @@ class ModularPlatform {
     if (payload.body.length > 1024) throw new RangeError('Post body is too large.')
     // make configurable
     if (typeof payload.prev !== 'string') throw new TypeError('Incomplete request payload (prev).')
-    if (typeof payload.sig !== 'string') throw new TypeError('Incomplete request payload (signature).')
+    if (typeof payload.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
 
     ModularPlatform.validateTimestamp(payload.timestamp)
 
@@ -221,9 +221,9 @@ class ModularPlatform {
     user.profile.HEAD = ModularTrustRoot.blockHash(payload.timestamp + payload.body, user.profile.HEAD)
     user.profile.LASTUPDATED = payload.timestamp
 
-    if ((await user.verifier.verifyUserProfileUpdate(payload.sig, payload.timestamp, user.profile)) !== true) { throw new Error('Could not verify profile update.') }
+    if ((await user.verifier.verifyUserProfileUpdate(payload.signature, payload.timestamp, user.profile)) !== true) { throw new Error('Could not verify profile update.') }
 
-    user.signature = payload.sig
+    user.signature = payload.signature
 
     user.posts.unshift({
       timestamp: payload.timestamp,
@@ -346,7 +346,7 @@ class ModularPlatform {
           signature: user.signature,
           key: user.key
         }
-        if (request.withFollows === true) {
+        if (payload.withFollows === true) {
           results.follows = [...user.follows]
         }
         resolve(results)
@@ -467,16 +467,13 @@ class ModularUser {
     this.profile.LASTUPDATED = timestamp
     const follows = [...this.follows]
     this.profile.FOLLOWS = ModularTrustRoot.SHA256(follows.join())
-    const signature = await this.source.userProfileUpdate(this.profile)
+    const signature = await this.source.userProfileUpdate(this.profile, timestamp)
     this.signature = signature.signature
     await this.platform.startPropagation(this.id, 'FOLLOWS', {
       user: this.id,
       timestamp: timestamp,
       follows: follows,
-      sig: {
-        timestamp: signature.timestamp,
-        signature: signature.signature
-      }
+      signature: signature.signature
     })
     await this.save()
     return this.profile.FOLLOWS
@@ -510,7 +507,7 @@ class ModularUser {
       timestamp: timestamp,
       body: body,
       prev: prev,
-      sig: signature.signature
+      signature: signature.signature
     })
     this.posts.unshift({
       timestamp: timestamp,
