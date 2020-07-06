@@ -66,7 +66,7 @@ class ModularPlatform {
     const fullReach = newReach.concat(request.reach)
     request.reach = fullReach
 
-    console.log(JSON.stringify(request))
+    // console.log(JSON.stringify(request))
 
     const promises = []
     newReach.forEach((node) => {
@@ -96,12 +96,14 @@ class ModularPlatform {
       const mod = Number(big % this.bigM)
       const node = this.network.network.bestNodeCovering(mod)
       // switch to queued version
-      this.network.peerQuery(node.endpoint, [{
+      const request = {
         layer: 'SOCIAL',
         type: type,
         payload: payload,
         mod: mod
-      }]).then((result) => {
+      }
+      // console.log(request)
+      this.network.peerQuery(node.endpoint, [request]).then((result) => {
         resolve(result.results[0].result)
       }).catch((error) => {
         reject(error)
