@@ -328,7 +328,6 @@ class ModularPlatform {
     var maxPosts = 256 // make configurable
     if (Number.isInteger(request.maxPosts) && request.maxPosts > 0 && request.maxPosts < maxPosts) maxPosts = request.maxPosts
 
-
     const payload = request.payload
 
     return new Promise((resolve, reject) => {
@@ -341,12 +340,14 @@ class ModularPlatform {
 
       this.loadUser(payload.id).then((user) => {
         const posts = user.posts
-        if (request.withFollows === true) results.follows = [...user.follows],
-        results = {
+        const results = {
           profile: Object.assign({}, user.profile),
           posts: posts.slice(0, maxPosts),
           signature: user.signature,
           key: user.key
+        }
+        if (request.withFollows === true) {
+          results.follows = [...user.follows]
         }
         resolve(results)
       }).catch((err) => reject(err))
