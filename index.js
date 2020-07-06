@@ -267,18 +267,16 @@ class ModularPlatform {
     const payload = request.payload
 
     if (typeof payload.key !== 'string') throw new TypeError('Incomplete request payload (key).')
-    if (typeof payload.profileUpdate.user !== 'string') throw new TypeError('Incomplete request payload (user).')
-    if (payload.profileUpdate.type !== 'PROFILE') throw new TypeError('Incomplete request payload (type).')
-    if (typeof payload.profileUpdate.body !== 'string') throw new TypeError('Incomplete request payload (body).')
-    if (typeof payload.profileUpdate.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
+    if (typeof payload.id !== 'string') throw new TypeError('Incomplete request payload (id).')
+    if (typeof payload.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
     if (typeof payload.profile !== 'object') throw new TypeError('Incomplete request payload (profile).')
 
-    if ((await ModularUser.exists.bind(this)(payload.profileUpdate.user)) !== false) throw new Error('Already registered.')
-    ModularPlatform.validateTimestamp(payload.profileUpdate.timestamp)
+    if ((await ModularUser.exists.bind(this)(payload.id)) !== false) throw new Error('Already registered.')
+    ModularPlatform.validateTimestamp(payload.timestamp)
 
     const verifier = await ModularVerifier.loadUser(payload.key)
 
-    if (verifier.id !== payload.profileUpdate.user) throw new Error('UID does not match key.')
+    if (verifier.id !== payload.id) throw new Error('UID does not match key.')
 
     const big = BigInt('0x' + Buffer.from(verifier.id, 'base64').toString('hex'))
     const mod = big % this.bigM
@@ -288,19 +286,18 @@ class ModularPlatform {
     const newProfile = []
     Object.entries(payload.profile).forEach(entry => {
       const [key, value] = entry
-      if (key !== 'LASTUPDATED') newProfile[key] = value
+      newProfile[key] = value
     })
 
     // TODO: limit profile size
 
-    if ((await verifier.verifyUserProfileUpdate(payload.profileUpdate.signature, payload.profileUpdate.timestamp, newProfile)) !== true) { throw new Error('Could not verify profile.') }
+    if ((await verifier.verifyUserProfileUpdate(payload.signature, payload.timestamp, newProfile)) !== true) { throw new Error('Could not verify profile.') }
 
     const user = new ModularUser(this)
     user.key = payload.key
     user.id = verifier.id
     user.profile = newProfile
-    user.profile.LASTUPDATED = payload.profileUpdate.timestamp
-    user.signature = payload.profileUpdate.signature
+    user.signature = payload.signature
     user.posts = []
     user.follows = new Set()
     await user.save()
@@ -384,13 +381,13 @@ class ModularPlatform {
     user.posts = []
     user.follows = new Set()
     this.db.users.put('ME', user.id)
-    user.signature = packet.request.profileUpdate.signature
+    user.signature = packet.request.signature
     user.save()
     await this.startPropagation(user.id, 'REGISTER', packet.request)
     return user
   }
 
-  async getUserPosts (uid, max = 256) {
+  async getUserProfile (uid, max = 256) {
     const result = await this.startSingleton(uid, 'POSTS', {
       id: uid,
       max: max
