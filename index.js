@@ -66,8 +66,6 @@ class ModularPlatform {
     const fullReach = newReach.concat(request.reach)
     request.reach = fullReach
 
-    // console.log(JSON.stringify(request) + "\n")
-
     const promises = []
     newReach.forEach((node) => {
       const promise = this.network.peerQuery(node, [request]) // switch to queued version
@@ -102,7 +100,7 @@ class ModularPlatform {
         payload: payload,
         mod: mod
       }
-      // console.log(JSON.stringify(request) + "\n")
+
       this.network.peerQuery(node.endpoint, [request]).then((result) => {
         resolve(result.results[0].result)
       }).catch((error) => {
@@ -423,6 +421,8 @@ class ModularPlatform {
         throw new Error('Posts could not be verified')
       }
     })
+
+    if (withFollows && profile.FOLLOWS !== ModularTrustRoot.SHA256(response.follows.join())) throw new TypeError('Cannot verify follows')
 
     return response
   }
