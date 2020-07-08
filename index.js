@@ -34,6 +34,10 @@ class ModularPlatform {
     this.bigM = BigInt(this.network.network.M)
   }
 
+  onChange (callback) {
+    this.network.onChange(callback)
+  }
+
   onReady (callback) {
     this.network.onReady(callback)
   }
