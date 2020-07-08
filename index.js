@@ -68,7 +68,9 @@ class ModularPlatform {
 
     const promises = []
     newReach.forEach((node) => {
-      const promise = this.network.peerQuery(node, [request]) // switch to queued version
+      const promise = this.network.queueRequest(() => {
+        return this.network.peerQuery(node, [request])
+      })
       promises.push(promise)
     })
 
@@ -93,7 +95,7 @@ class ModularPlatform {
       const big = BigInt('0x' + Buffer.from(id, 'base64').toString('hex'))
       const mod = Number(big % this.bigM)
       const node = this.network.network.bestNodeCovering(mod)
-      // switch to queued version
+
       const request = {
         layer: 'SOCIAL',
         type: type,
@@ -101,7 +103,9 @@ class ModularPlatform {
         mod: mod
       }
 
-      this.network.peerQuery(node.endpoint, [request]).then((result) => {
+      this.network.queueRequest(() => {
+        return this.network.peerQuery(node.endpoint, [request])
+      }).then((result) => {
         resolve(result.results[0].result)
       }).catch((error) => {
         reject(error)
@@ -126,8 +130,8 @@ class ModularPlatform {
           /* Non-propagatory */
           case 'AHOY': return network.platform.ahoyHandler.bind(network.platform)()
           case 'PROFILE': return network.platform.fetchProfile.bind(network.platform)(request)
-          // case 'USER': return network.platform.fetchUser.bind(network.platform)(request)
-          // case 'USERS': return network.platform.userList.bind(network.platform)(request)
+          /* case 'USER': return network.platform.fetchUser.bind(network.platform)(request) */
+          /* case 'USERS': return network.platform.userList.bind(network.platform)(request) */
 
           /* Propagatory */
           case 'REGISTER': return network.platform.registerHandler.bind(network.platform)(request)
@@ -157,11 +161,12 @@ class ModularPlatform {
     })
   }
 
-  static validateTimestamp (timestamp) {
+  static validateTimestamp (timestamp, timeout = null) {
     if (!Number.isInteger(timestamp)) throw new TypeError('Timestamp must be an integer')
     if (!(timestamp <= Date.now())) throw new RangeError('Timestamp must be in the past')
-    // if (!(timestamp >= (Date.now() - 60000))) throw new RangeError('Timestamp must be recent')
-    // todo: move timeout to config
+    if (timeout !== null) {
+      if (!(timestamp >= (Date.now() - timeout))) throw new RangeError('Timestamp must be recent')
+    }
   }
 
   async followsHandler (request) {
@@ -169,7 +174,7 @@ class ModularPlatform {
 
     if (typeof payload.user !== 'string') throw new TypeError('Incomplete request payload (user).')
     if (!Array.isArray(payload.follows)) throw new TypeError('Incomplete request payload (follows).')
-    if (payload.follows.length > 4096) throw new RangeError('Follows list is too large.')
+    if (payload.follows.length > this.config.maxFollowCount) throw new RangeError('Follows list is too large.')
     if (payload.follows.some((i) => i.length > 44)) throw new RangeError('Follows item is too large.')
     if (typeof payload.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
 
@@ -200,8 +205,7 @@ class ModularPlatform {
 
     if (typeof payload.user !== 'string') throw new TypeError('Incomplete request payload (user).')
     if (typeof payload.body !== 'string') throw new TypeError('Incomplete request payload (body).')
-    if (payload.body.length > 1024) throw new RangeError('Post body is too large.')
-    // make configurable
+    if (payload.body.length > this.config.maxPostLength) throw new RangeError('Post body is too large.')
     if (typeof payload.prev !== 'string') throw new TypeError('Incomplete request payload (prev).')
     if (typeof payload.signature !== 'string') throw new TypeError('Incomplete request payload (signature).')
 
@@ -289,7 +293,7 @@ class ModularPlatform {
       newProfile[key] = value
     })
 
-    // TODO: limit profile size
+    if (JSON.stringify(Object.assign({}, newProfile)).length > this.config.maxProfileLength) throw new RangeError('Profile exceeded maximum allowable size.')
 
     if ((await verifier.verifyUserProfileUpdate(payload.signature, payload.timestamp, newProfile)) !== true) { throw new Error('Could not verify profile.') }
 
@@ -305,6 +309,7 @@ class ModularPlatform {
     return 'Saved user.'
   }
 
+  /*
   fetchUser (request) {
     const payload = request.payload
     return new Promise((resolve, reject) => {
@@ -321,9 +326,10 @@ class ModularPlatform {
       })
     })
   }
+  */
 
   fetchProfile (request) {
-    var maxPosts = 256 // make configurable
+    var maxPosts = this.config.maxPostCount
     if (Number.isInteger(request.maxPosts) && request.maxPosts > 0 && request.maxPosts < maxPosts) maxPosts = request.maxPosts
 
     const payload = request.payload
@@ -352,11 +358,9 @@ class ModularPlatform {
     })
   }
 
+  /*
   userList (request) {
     const max = 100
-    // configure maximum
-    // bulk downloads may need dedicated async process that bundles data,
-    // generates archive, and uploads back to endpoint asynchronously
     return new Promise((resolve, reject) => {
       const users = []
       this.db.users.createReadStream({ limit: max })
@@ -374,6 +378,7 @@ class ModularPlatform {
         })
     })
   }
+  */
 
   async registerUser (newProfile, passphrase) {
     const user = new ModularUser(this)
@@ -392,7 +397,7 @@ class ModularPlatform {
     return user
   }
 
-  async getUserProfile (uid, maxPosts = 256, withFollows = true) {
+  async getUserProfile (uid, maxPosts = this.config.maxPostCount, withFollows = true) {
     const result = await this.startSingleton(uid, 'PROFILE', {
       id: uid,
       maxPosts: maxPosts,
@@ -444,8 +449,7 @@ class ModularUser {
 
   save () {
     return new Promise((resolve, reject) => {
-      // make max post quantity configure
-      this.platform.db.posts.put(this.id, JSON.stringify(this.posts.slice(0, 256)), (err) => {
+      this.platform.db.posts.put(this.id, JSON.stringify(this.posts.slice(0, this.platform.config.maxPostCount)), (err) => {
         if (err) reject(err)
         this.platform.db.users.put(this.id, JSON.stringify({
           id: this.id,
@@ -480,8 +484,7 @@ class ModularUser {
   }
 
   async follow (uid) {
-    // make configurable
-    if (this.follows.size >= 4096) throw new RangeError('Maximum number of direct follows is 4096.')
+    if (this.follows.size >= this.platform.config.maxFollowCount) throw new RangeError('Maximum number of direct follows exceeded.')
     this.follows.add(uid)
     await this.pushFollows()
     return uid
@@ -496,7 +499,7 @@ class ModularUser {
   async post (body) {
     if (this.type !== 'ME') throw new TypeError('Cannot post from this account')
     if (typeof body !== 'string') throw new TypeError('Post body must be a string')
-    if (body.length > 1024) throw new RangeError('Post size is above maximum allowable') // configurable max length
+    if (body.length > this.platform.config.maxPostLength) throw new RangeError('Post size is above maximum allowable')
     const prev = this.profile.HEAD
     const timestamp = Date.now()
     this.profile.HEAD = ModularTrustRoot.blockHash(timestamp + body, prev)
@@ -537,18 +540,20 @@ class ModularUser {
   static hidePost (pidToHide) {}
 }
 
-// /** @todo implementation */
-// class ModularMessage {
-//   constructor (sender, recipient) {
-//     this.sender = sender
-//     this.recipient = recipient
-//   }
-//
-//   setBody (body) { this.body = body }
-//   send () {}
-// }
+/** @todo implementation */
+/*
+class ModularMessage {
+  constructor (sender, recipient) {
+    this.sender = sender
+    this.recipient = recipient
+  }
+
+  setBody (body) { this.body = body }
+  send () {}
+}
+*/
 
 /* Module Exports */
 module.exports.ModularPlatform = ModularPlatform
 module.exports.ModularUser = ModularUser
-// module.exports.ModularMessage = ModularMessage
+/* module.exports.ModularMessage = ModularMessage */
