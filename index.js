@@ -459,17 +459,17 @@ class ModularUser {
   }
 
   getSector () {
-    if (typeof this.sector === 'undefined') this.sector = this.getMod() % this.config.sectorMapSize
+    if (typeof this.sector === 'undefined') this.sector = this.getMod() % this.platform.config.sectorMapSize
     return this.sector
   }
 
   getLogoSector () {
-    if (typeof this.logoSector === 'undefined') this.logoSector = this.getMod() % this.config.logoSectorMapSize
+    if (typeof this.logoSector === 'undefined') this.logoSector = this.getMod() % this.platform.config.logoSectorMapSize
     return this.logoSector
   }
 
   getIconSector () {
-    if (typeof this.iconSector === 'undefined') this.iconSector = this.getMod() % this.config.iconSectorMapSize
+    if (typeof this.iconSector === 'undefined') this.iconSector = this.getMod() % this.platform.config.iconSectorMapSize
     return this.iconSector
   }
 
