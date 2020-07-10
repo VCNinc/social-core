@@ -100,6 +100,8 @@ class ModularPlatform {
       const mod = Number(big % this.bigM)
       const node = this.network.network.bestNodeCovering(mod)
 
+      if (node === undefined) reject(new Error('Insufficient coverage to perform request.'))
+
       const request = {
         layer: 'SOCIAL',
         type: type,
@@ -445,7 +447,7 @@ class ModularUser {
   getMod () {
     if (typeof this.mod === 'undefined') {
       const big = BigInt('0x' + Buffer.from(this.id, 'base64').toString('hex'))
-      const mod = big % this.bigM
+      const mod = big % this.platform.bigM
       this.mod = Number(mod)
     }
     return this.mod
