@@ -442,6 +442,35 @@ class ModularUser {
     this.platform = platform
   }
 
+  getMod () {
+    if (typeof this.mod === 'undefined') {
+      const big = BigInt('0x' + Buffer.from(this.id, 'base64').toString('hex'))
+      const mod = big % this.bigM
+      this.mod = Number(mod)
+    }
+    return this.mod
+  }
+
+  getUrl () {
+    if (typeof this.urlID === 'undefined') this.urlID = this.id.replace(/\+/g, '-').replace(/\//g, '_')
+    return this.urlID
+  }
+
+  getSector () {
+    if (typeof this.sector === 'undefined') this.sector = this.getMod() % this.config.sectorMapSize
+    return this.sector
+  }
+
+  getLogoSector () {
+    if (typeof this.logoSector === 'undefined') this.logoSector = this.getMod() % this.config.logoSectorMapSize
+    return this.logoSector
+  }
+
+  getIconSector () {
+    if (typeof this.iconSector === 'undefined') this.iconSector = this.getMod() % this.config.iconSectorMapSize
+    return this.iconSector
+  }
+
   static exists (uid) {
     return new Promise((resolve, reject) => {
       this.db.users.get(uid, (err, value) => {

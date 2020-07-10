@@ -104,4 +104,52 @@ suite('index', () => {
 
     return
   }).timeout(20000)
+
+  test('full flow', async () => {
+    const newProfile = []
+    newProfile['name'] = "Test 2"
+    newProfile['email'] = "test2@example.com"
+    newProfile['etc'] = '12345'
+    let user = await this.platform.registerUser(newProfile, 'Tr0ub4dour&3')
+    await user.post('Hello, world!')
+    await user.post('Another post!')
+    await user.post('A final post!')
+    let posts = (await this.platform.getUserProfile(user.id)).posts
+    posts[0].body.should.equal('A final post!')
+    posts[1].body.should.equal('Another post!')
+    posts[2].body.should.equal('Hello, world!')
+
+    const u1 = []
+    u1['name'] = 'U1'
+    let user1 = await this.platform.registerUser(u1, 'Tr0ub4dour&3')
+
+    const u2 = []
+    u2['name'] = 'U2'
+    let user2 = await this.platform.registerUser(u2, 'Tr0ub4dour&3')
+
+    const u3 = []
+    u3['name'] = 'U3'
+    let user3 = await this.platform.registerUser(u3, 'Tr0ub4dour&3')
+
+    await user.follow(user1.id)
+    await user.follow(user2.id)
+    await user.follow(user3.id)
+
+    let follows = (await this.platform.getUserProfile(user.id)).follows
+    follows.should.be.an('array').with.lengthOf(3)
+    follows[0].should.equal(user1.id)
+    follows[1].should.equal(user2.id)
+    follows[2].should.equal(user3.id)
+
+    await user.unfollow(user2.id)
+
+    follows = (await this.platform.getUserProfile(user.id)).follows
+    follows.should.be.an('array').with.lengthOf(2)
+    follows[0].should.equal(user1.id)
+    follows[1].should.equal(user3.id)
+
+    console.log(user.getUrl())
+
+    return
+  }).timeout(20000)
 })
