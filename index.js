@@ -244,6 +244,35 @@ class ModularPlatform {
     return 'Saved post.'
   }
 
+  async userLogin (key, password) {
+    const source = await ModularSource.userLogin(key, password)
+    const uid = source.id
+    const user = await this.downloadUser(uid)
+    user.key = key
+    user.source = source
+    user.type = 'ME'
+    user.save()
+    return user
+  }
+
+  async downloadUser (uid) {
+    const data = await this.getUserProfile(uid)
+    const user = new ModularUser(this)
+    user.type = 'OTHER'
+    user.key = data.key
+    user.signature = data.signature
+    user.follows = new Set(data.follows)
+    user.verifier = await ModularVerifier.loadUser(data.key)
+    user.id = user.verifier.id
+    user.profile = []
+    Object.entries(data.profile).forEach(entry => {
+      const [key, value] = entry
+      user.profile[key] = value
+    })
+    user.posts = data.posts
+    return user
+  }
+
   loadUser (uid) {
     return new Promise((resolve, reject) => {
       this.db.users.get(uid, (err, value) => {
@@ -442,6 +471,11 @@ class ModularPlatform {
 class ModularUser {
   constructor (platform) {
     this.platform = platform
+  }
+
+  async unlock (password) {
+    this.source = await ModularSource.userLogin(this.key, password)
+    this.type = 'ME'
   }
 
   getMod () {
