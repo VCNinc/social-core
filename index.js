@@ -169,7 +169,7 @@ class ModularPlatform {
 
   static validateTimestamp (timestamp, timeout = null) {
     if (!Number.isInteger(timestamp)) throw new TypeError('Timestamp must be an integer')
-    if (!(timestamp <= Date.now())) throw new RangeError('Timestamp must be in the past')
+    if (!(timestamp <= (Date.now() + 1000))) throw new RangeError('Timestamp must be in the past')
     if (timeout !== null) {
       if (!(timestamp >= (Date.now() - timeout))) throw new RangeError('Timestamp must be recent')
     }
