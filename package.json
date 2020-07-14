@@ -53,10 +53,10 @@
     "access": "public"
   },
   "dependencies": {
-    "@modular/config": "^1.0.16",
-    "@modular/dmnc-core": "^1.0.11",
-    "@modular/smcc-core": "^1.1.9",
-    "@modular/standard": "^1.0.18",
+    "@modular/config": "^1.0.17",
+    "@modular/dmnc-core": "^1.0.12",
+    "@modular/smcc-core": "^1.1.10",
+    "@modular/standard": "^1.0.20",
     "level": "^6.0.1"
   }
 }
