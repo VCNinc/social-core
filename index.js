@@ -590,9 +590,93 @@ class ModularUser {
     return this.profile.HEAD
   }
 
-  getTimeline () {
+  getTimeline (reach = this.follows, maxPostsPerUser = this.platform.config.maxPostCount) {
     return new Promise((resolve, reject) => {
+      let follows = []
+      let availability = new Set(reach)
 
+      reach.forEach((follow) => {
+        const big = BigInt('0x' + Buffer.from(follow, 'base64').toString('hex'))
+        const mod = Number(big % this.platform.bigM)
+
+        follows.push({
+          user: follow,
+          id: mod
+        })
+      })
+
+      let map = this.platform.network.network.minimalIDCoverageSet(follows)
+
+      if (map.uncovered.length > 0) {
+        return reject(new Error('Network did not cover all provided nodes.'))
+      }
+
+      let promises = []
+
+      map.covered.forEach((node) => {
+        let requests = []
+        node.identifiers.forEach((user) => {
+          requests.push({
+            layer: 'SOCIAL',
+            type: 'PROFILE',
+            payload: {
+              id: user.user,
+              max: maxPostsPerUser,
+              withFollows: false
+            },
+            mod: user.id
+          })
+        })
+
+        promises.push(
+          this.platform.network.queueRequest(() => {
+            return this.platform.network.peerQuery(node.node.endpoint, requests)
+          })
+        )
+      })
+
+      Promise.all(promises).then((results) => {
+        (async () => {
+          let posts = []
+
+          for (let result of results) {
+            for (let user of result.results) {
+              let uid = user.request.payload.id
+              availability.delete(uid)
+
+              if (user.result.status !== 'OK') throw new Error('Error loading user data.')
+              let response = user.result.response
+              const verifier = await ModularVerifier.loadUser(response.key)
+              if (verifier.id !== uid) throw new Error('User ID mismatch')
+
+              const profile = []
+              Object.entries(response.profile).forEach(entry => {
+                const [key, value] = entry
+                profile[key] = value
+              })
+              if ((await verifier.verifyUserProfileUpdate(response.signature, profile.LASTUPDATED, profile)) !== true) throw new Error('Signature could not be verified.')
+              profile.id = uid;
+
+              let expected = profile.HEAD
+              response.posts.forEach((post) => {
+                if (expected === ModularTrustRoot.blockHash(post.timestamp + post.body, post.prev)) {
+                  post.verified = true
+                  post.profile = profile
+                  posts.push(post)
+                  expected = post.prev
+                } else {
+                  throw new Error('Posts could not be verified')
+                }
+              })
+            }
+          }
+
+          if (availability.size > 0) reject(new RangeError('Could not access all follows.'))
+          else resolve(posts)
+        })()
+      }).catch((err) => {
+        reject(err)
+      })
     })
   }
 
@@ -615,6 +699,12 @@ class ModularUser {
   static hidePost (pidToHide) {}
 }
 
+class ModularSocial {
+  static rankChronological(posts) {
+    return posts.sort((a, b) => b.timestamp - a.timestamp)
+  }
+}
+
 /** @todo implementation */
 /*
 class ModularMessage {
@@ -631,4 +721,5 @@ class ModularMessage {
 /* Module Exports */
 module.exports.ModularPlatform = ModularPlatform
 module.exports.ModularUser = ModularUser
+module.exports.ModularSocial = ModularSocial
 /* module.exports.ModularMessage = ModularMessage */

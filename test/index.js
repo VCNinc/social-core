@@ -1,4 +1,4 @@
-var {ModularPlatform, ModularUser, ModularPost, ModularMessage} = require('../index.js');
+var {ModularPlatform, ModularUser, ModularSocial} = require('../index.js');
 var should = require('chai').should();
 
 suite('index', () => {
@@ -122,14 +122,20 @@ suite('index', () => {
     const u1 = []
     u1['name'] = 'U1'
     let user1 = await this.platform.registerUser(u1, 'Tr0ub4dour&3')
+    await user1.post('post 1')
+    await user1.post('post 2')
 
     const u2 = []
     u2['name'] = 'U2'
     let user2 = await this.platform.registerUser(u2, 'Tr0ub4dour&3')
+    await user2.post('post 3')
+    await user2.post('post 4')
 
     const u3 = []
     u3['name'] = 'U3'
     let user3 = await this.platform.registerUser(u3, 'Tr0ub4dour&3')
+    await user3.post('post 5')
+    await user3.post('post 6')
 
     await user.follow(user1.id)
     await user.follow(user2.id)
@@ -147,6 +153,14 @@ suite('index', () => {
     follows.should.be.an('array').with.lengthOf(2)
     follows[0].should.equal(user1.id)
     follows[1].should.equal(user3.id)
+
+    let timeline = await user.getTimeline()
+    let ranked = await ModularSocial.rankChronological(timeline)
+
+    ranked[0].body.should.equal('post 6')
+    ranked[1].body.should.equal('post 5')
+    ranked[2].body.should.equal('post 2')
+    ranked[3].body.should.equal('post 1')
 
     return
   }).timeout(20000)
