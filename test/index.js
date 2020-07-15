@@ -148,8 +148,6 @@ suite('index', () => {
     follows[0].should.equal(user1.id)
     follows[1].should.equal(user3.id)
 
-    console.log(user.getUrl())
-
     return
   }).timeout(20000)
 })

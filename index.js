@@ -29,8 +29,8 @@ class ModularPlatform {
     this.debugLogger = this.network.debugLogger
     this.network.registerHandler('SOCIAL', this.socialHandler)
     this.db = {}
-    this.db.users = level('users')
-    this.db.posts = level('posts')
+    this.db.users = level('db/users', { valueEncoding: 'json' })
+    this.db.posts = level('db/posts', { valueEncoding: 'json' })
     this.bigM = BigInt(this.network.network.M)
   }
 
@@ -277,7 +277,7 @@ class ModularPlatform {
     return new Promise((resolve, reject) => {
       this.db.users.get(uid, (err, value) => {
         if (err) { reject(new Error('User does not exist.')) } else {
-          const data = JSON.parse(value)
+          const data = value
           const user = new ModularUser(this)
           user.type = 'OTHER'
           user.key = data.key
@@ -293,7 +293,7 @@ class ModularPlatform {
             })
             user.profile = profile
             this.db.posts.get(uid, (err, value) => {
-              if (err) { user.posts = [] } else { user.posts = JSON.parse(value) }
+              if (err) { user.posts = [] } else { user.posts = value }
               resolve(user)
             })
           })
@@ -518,15 +518,15 @@ class ModularUser {
 
   save () {
     return new Promise((resolve, reject) => {
-      this.platform.db.posts.put(this.id, JSON.stringify(this.posts.slice(0, this.platform.config.maxPostCount)), (err) => {
+      this.platform.db.posts.put(this.id, this.posts.slice(0, this.platform.config.maxPostCount), (err) => {
         if (err) reject(err)
-        this.platform.db.users.put(this.id, JSON.stringify({
+        this.platform.db.users.put(this.id, {
           id: this.id,
           key: this.key,
           profile: Object.assign({}, this.profile),
           signature: this.signature,
           follows: [...this.follows]
-        }), (err) => {
+        }, (err) => {
           if (err) reject(err)
           else resolve()
         })
@@ -588,6 +588,12 @@ class ModularUser {
     })
     await this.save()
     return this.profile.HEAD
+  }
+
+  getTimeline () {
+    return new Promise((resolve, reject) => {
+
+    })
   }
 
   /** @todo implementation */
