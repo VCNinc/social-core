@@ -592,8 +592,8 @@ class ModularUser {
 
   getTimeline (reach = this.follows, maxPostsPerUser = this.platform.config.maxPostCount) {
     return new Promise((resolve, reject) => {
-      let follows = []
-      let availability = new Set(reach)
+      const follows = []
+      const availability = new Set(reach)
 
       reach.forEach((follow) => {
         const big = BigInt('0x' + Buffer.from(follow, 'base64').toString('hex'))
@@ -605,16 +605,16 @@ class ModularUser {
         })
       })
 
-      let map = this.platform.network.network.minimalIDCoverageSet(follows)
+      const map = this.platform.network.network.minimalIDCoverageSet(follows)
 
       if (map.uncovered.length > 0) {
         return reject(new Error('Network did not cover all provided nodes.'))
       }
 
-      let promises = []
+      const promises = []
 
       map.covered.forEach((node) => {
-        let requests = []
+        const requests = []
         node.identifiers.forEach((user) => {
           requests.push({
             layer: 'SOCIAL',
@@ -637,15 +637,15 @@ class ModularUser {
 
       Promise.all(promises).then((results) => {
         (async () => {
-          let posts = []
+          const posts = []
 
-          for (let result of results) {
-            for (let user of result.results) {
-              let uid = user.request.payload.id
+          for (const result of results) {
+            for (const user of result.results) {
+              const uid = user.request.payload.id
               availability.delete(uid)
 
               if (user.result.status !== 'OK') throw new Error('Error loading user data.')
-              let response = user.result.response
+              const response = user.result.response
               const verifier = await ModularVerifier.loadUser(response.key)
               if (verifier.id !== uid) throw new Error('User ID mismatch')
 
@@ -655,7 +655,7 @@ class ModularUser {
                 profile[key] = value
               })
               if ((await verifier.verifyUserProfileUpdate(response.signature, profile.LASTUPDATED, profile)) !== true) throw new Error('Signature could not be verified.')
-              profile.id = uid;
+              profile.id = uid
 
               let expected = profile.HEAD
               response.posts.forEach((post) => {
@@ -700,7 +700,7 @@ class ModularUser {
 }
 
 class ModularSocial {
-  static rankChronological(posts) {
+  static rankChronological (posts) {
     return posts.sort((a, b) => b.timestamp - a.timestamp)
   }
 }
