@@ -84,8 +84,8 @@ class ModularPlatform {
     this.debugLogger = this.network.debugLogger
     this.network.registerHandler('SOCIAL', this.socialHandler)
     this.db = {}
-    this.db.users = level('users')
-    this.db.posts = level('posts')
+    this.db.users = level('db/users', { valueEncoding: 'json' })
+    this.db.posts = level('db/posts', { valueEncoding: 'json' })
     this.bigM = BigInt(this.network.network.M)
   }
 
@@ -332,7 +332,7 @@ class ModularPlatform {
     return new Promise((resolve, reject) => {
       this.db.users.get(uid, (err, value) => {
         if (err) { reject(new Error('User does not exist.')) } else {
-          const data = JSON.parse(value)
+          const data = value
           const user = new ModularUser(this)
           user.type = 'OTHER'
           user.key = data.key
@@ -348,7 +348,7 @@ class ModularPlatform {
             })
             user.profile = profile
             this.db.posts.get(uid, (err, value) => {
-              if (err) { user.posts = [] } else { user.posts = JSON.parse(value) }
+              if (err) { user.posts = [] } else { user.posts = value }
               resolve(user)
             })
           })
@@ -573,15 +573,15 @@ class ModularUser {
 
   save () {
     return new Promise((resolve, reject) => {
-      this.platform.db.posts.put(this.id, JSON.stringify(this.posts.slice(0, this.platform.config.maxPostCount)), (err) => {
+      this.platform.db.posts.put(this.id, this.posts.slice(0, this.platform.config.maxPostCount), (err) => {
         if (err) reject(err)
-        this.platform.db.users.put(this.id, JSON.stringify({
+        this.platform.db.users.put(this.id, {
           id: this.id,
           key: this.key,
           profile: Object.assign({}, this.profile),
           signature: this.signature,
           follows: [...this.follows]
-        }), (err) => {
+        }, (err) => {
           if (err) reject(err)
           else resolve()
         })
@@ -645,6 +645,96 @@ class ModularUser {
     return this.profile.HEAD
   }
 
+  getTimeline (reach = this.follows, maxPostsPerUser = this.platform.config.maxPostCount) {
+    return new Promise((resolve, reject) => {
+      const follows = []
+      const availability = new Set(reach)
+
+      reach.forEach((follow) => {
+        const big = BigInt('0x' + Buffer.from(follow, 'base64').toString('hex'))
+        const mod = Number(big % this.platform.bigM)
+
+        follows.push({
+          user: follow,
+          id: mod
+        })
+      })
+
+      const map = this.platform.network.network.minimalIDCoverageSet(follows)
+
+      if (map.uncovered.length > 0) {
+        return reject(new Error('Network did not cover all provided nodes.'))
+      }
+
+      const promises = []
+
+      map.covered.forEach((node) => {
+        const requests = []
+        node.identifiers.forEach((user) => {
+          requests.push({
+            layer: 'SOCIAL',
+            type: 'PROFILE',
+            payload: {
+              id: user.user,
+              max: maxPostsPerUser,
+              withFollows: false
+            },
+            mod: user.id
+          })
+        })
+
+        promises.push(
+          this.platform.network.queueRequest(() => {
+            return this.platform.network.peerQuery(node.node.endpoint, requests)
+          })
+        )
+      })
+
+      Promise.all(promises).then((results) => {
+        (async () => {
+          const posts = []
+
+          for (const result of results) {
+            for (const user of result.results) {
+              const uid = user.request.payload.id
+              availability.delete(uid)
+
+              if (user.result.status !== 'OK') throw new Error('Error loading user data.')
+              const response = user.result.response
+              const verifier = await ModularVerifier.loadUser(response.key)
+              if (verifier.id !== uid) throw new Error('User ID mismatch')
+
+              const profile = []
+              Object.entries(response.profile).forEach(entry => {
+                const [key, value] = entry
+                profile[key] = value
+              })
+              if ((await verifier.verifyUserProfileUpdate(response.signature, profile.LASTUPDATED, profile)) !== true) throw new Error('Signature could not be verified.')
+              profile.id = uid
+
+              let expected = profile.HEAD
+              response.posts.forEach((post) => {
+                if (expected === ModularTrustRoot.blockHash(post.timestamp + post.body, post.prev)) {
+                  post.verified = true
+                  post.profile = profile
+                  posts.push(post)
+                  expected = post.prev
+                } else {
+                  throw new Error('Posts could not be verified')
+                }
+              })
+            }
+          }
+
+          if (availability.size > 0) reject(new RangeError('Could not access all follows.'))
+          else resolve(posts)
+        })()
+      }).catch((err) => {
+        reject(err)
+      })
+    })
+  }
+
   /** @todo implementation */
   updateProfile (fields) {}
 
@@ -664,6 +754,12 @@ class ModularUser {
   static hidePost (pidToHide) {}
 }
 
+class ModularSocial {
+  static rankChronological (posts) {
+    return posts.sort((a, b) => b.timestamp - a.timestamp)
+  }
+}
+
 /** @todo implementation */
 /*
 class ModularMessage {
@@ -680,6 +776,7 @@ class ModularMessage {
 /* Module Exports */
 module.exports.ModularPlatform = ModularPlatform
 module.exports.ModularUser = ModularUser
+module.exports.ModularSocial = ModularSocial
 /* module.exports.ModularMessage = ModularMessage */
 </code></pre>
         </article>
@@ -695,7 +792,7 @@ module.exports.ModularUser = ModularUser
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.4</a> on Tue Jul 14 2020 22:02:27 GMT-0500 (Central Daylight Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.4</a> on Wed Jul 15 2020 19:01:05 GMT-0500 (Central Daylight Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
