@@ -29,8 +29,8 @@ class ModularPlatform {
     this.debugLogger = this.network.debugLogger
     this.network.registerHandler('SOCIAL', this.socialHandler)
     this.db = {}
-    this.db.users = level('./db/users', { valueEncoding: 'json' })
-    this.db.posts = level('./db/posts', { valueEncoding: 'json' })
+    this.db.users = level(this.network.dbPath + 'users', { valueEncoding: 'json' })
+    this.db.posts = level(this.network.dbPath + 'posts', { valueEncoding: 'json' })
     this.bigM = BigInt(this.network.network.M)
   }
 
